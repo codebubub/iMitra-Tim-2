@@ -4,6 +4,11 @@ import { AuthProvider } from './auth/AuthContext'
 import { Penjaga } from './auth/Penjaga'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
+import { BuatPengajuan } from './pages/BuatPengajuan'
+import { UploadDokumen } from './pages/UploadDokumen'
+import { VerifikasiDokumen } from './pages/VerifikasiDokumen'
+import { SurveiHalaman } from './pages/Survei'
+import { NotifikasiHalaman } from './pages/Notifikasi'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,6 +40,46 @@ export function App() {
               element={
                 <Penjaga>
                   <Dashboard />
+                </Penjaga>
+              }
+            />
+            <Route
+              path="/pengajuan/baru"
+              element={
+                <Penjaga peran={['AO']}>
+                  <BuatPengajuan />
+                </Penjaga>
+              }
+            />
+            <Route
+              path="/pengajuan/:id/dokumen"
+              element={
+                <Penjaga peran={['AO']}>
+                  <UploadDokumen />
+                </Penjaga>
+              }
+            />
+            <Route
+              path="/pengajuan/:id/verifikasi-dokumen"
+              element={
+                <Penjaga peran={['ANL']}>
+                  <VerifikasiDokumen />
+                </Penjaga>
+              }
+            />
+            <Route
+              path="/pengajuan/:id/survei"
+              element={
+                <Penjaga peran={['AO', 'ANL']}>
+                  <SurveiHalaman />
+                </Penjaga>
+              }
+            />
+            <Route
+              path="/notifikasi"
+              element={
+                <Penjaga>
+                  <NotifikasiHalaman />
                 </Penjaga>
               }
             />
