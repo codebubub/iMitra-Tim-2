@@ -34,8 +34,8 @@
 |---|---|---|---|
 | 2026-08-20 09:45 | Tech Lead | Versi awal dari template hackathon | — |
 | 2026-08-20 10:30 | Tech Lead | Isi bagian 2 (stack Node/TS/Fastify/Prisma/React), bagian 3 (struktur direktori + aturan lapisan), bagian 4.1 (konvensi + 15 nilai enum status), bagian 5.1 (nama tabel parameter + 4 parameter asumsi), bagian 7 (perintah test & lint) | ADR-0001, ADR-0002, ADR-0003 |
+| 2026-08-20 13:50 | Firman | Isi bagian 4.3 (bentuk galat, 422 untuk BR, 502 untuk SLIK), lokasi penegakan BR-01/10/11/12, dan larangan 16–19 | FR-01, FR-09; temuan lapis ke-3 AC-13 tidak berfungsi |
 | `<!-- ISI -->` | `<!-- ISI -->` | `<!-- ISI: larangan baru setelah AI melanggar sesuatu -->` | `<!-- ISI: DEVLOG-xx -->` |
-| `<!-- ISI -->` | `<!-- ISI -->` | `<!-- ISI -->` | `<!-- ISI -->` |
 
 ---
 
@@ -252,9 +252,9 @@ Bentuk respons error yang seragam untuk seluruh API:
 
 ```json
 {
-  "error": "<!-- ISI: KODE_KONSTAN -->",
-  "message": "<!-- ISI: pesan untuk pengguna, tanpa data pribadi -->",
-  "rule": "<!-- ISI: opsional, mis. BR-03 -->"
+  "error": "ATURAN_BISNIS_DILANGGAR",
+  "message": "margin 10.00% di luar rentang grade 1 (11.00% - 13.00%)",
+  "rule": "BR-06"
 }
 ```
 
@@ -263,9 +263,9 @@ Bentuk respons error yang seragam untuk seluruh API:
 | Belum login / token tidak valid | 401 | |
 | Login tetapi peran tidak berwenang | **403** | AC-02 menguji ini secara langsung. Bukan 200, bukan 404 |
 | Validasi input gagal | 400 | Sebutkan field yang salah |
-| Pelanggaran aturan bisnis (BR-xx) | `<!-- ISI: 409 atau 422, pilih satu dan konsisten -->` | Pesan wajib menyebut kode BR-nya |
+| Pelanggaran aturan bisnis (BR-xx) | **422** | Pesan wajib menyebut kode BR-nya. Dipilih, bukan 409, karena bentuk permintaannya benar — yang ditolak adalah maknanya. 409 kami sisakan untuk konflik keadaan yang sesungguhnya |
 | Sumber daya tidak ada | 404 | |
-| Mock SLIK tidak tersedia / timeout | `<!-- ISI: mis. 502 atau 503 -->` | **Tidak boleh** dianggap SLIK bersih |
+| Mock SLIK tidak tersedia / timeout | **502** | **Tidak boleh** dianggap SLIK bersih. 502 dan bukan 500: ini kegagalan sistem lain, dan ANL berhak tahu bedanya (`lib/errors.ts` → `SlikTidakTersedia`) |
 | Galat tak terduga | 500 | Tanpa stack trace ke klien |
 
 Aturan yang tidak boleh dilanggar agent:
@@ -339,7 +339,7 @@ benar-benar dibaca dari data.
 
 | BR | Aturan (ringkas) | Ditegakkan di |
 |---|---|---|
-| **BR-01** | Plafon < Rp 5.000.000 atau > Rp 500.000.000 ditolak saat submit, dengan pesan yang menjelaskan batas | `<!-- ISI: path -->` |
+| **BR-01** | Plafon < Rp 5.000.000 atau > Rp 500.000.000 ditolak saat submit, dengan pesan yang menjelaskan batas | `backend/src/domain/plafon.ts` (`validasiBatasPlafon`), dipanggil `services/pengajuan.service.ts` saat submit |
 | **BR-02** | Approval harus berurutan: level 2 tidak dapat memutuskan sebelum level 1 memberi `APPROVE` | `<!-- ISI -->` |
 | **BR-03** | Skoring baru boleh jalan jika semua dokumen wajib `VERIFIED` **dan** ada minimal satu survei `VALID` **dan** SLIK check sudah dijalankan | `<!-- ISI -->` |
 | **BR-04** | Hasil SLIK berlaku 30 hari; lewat itu pengajuan ditandai perlu SLIK ulang | `<!-- ISI -->` |
@@ -348,9 +348,9 @@ benar-benar dibaca dari data.
 | **BR-07** | Skor akhir = Σ (skor komponen × bobot) ÷ Σ bobot, dibulatkan ke bilangan bulat terdekat | `<!-- ISI -->` |
 | **BR-08** | Rincian tiap komponen skor wajib ditampilkan ke ANL **dan disimpan** bersama hasil skoring, bukan hanya angka akhir | `<!-- ISI -->` |
 | **BR-09** | Satu pengguna tidak boleh menjadi maker dan approver pada pengajuan yang sama; ditegakkan di **server** | `<!-- ISI -->` |
-| **BR-10** | Setiap perubahan status wajib punya aktor dan timestamp; tidak ada perubahan "oleh sistem" tanpa jejak sebab | `<!-- ISI -->` |
-| **BR-11** | NIK dan foto dokumen adalah data pribadi: tidak boleh muncul di log aplikasi, pesan error, atau URL | `<!-- ISI -->` |
-| **BR-12** | Nomor referensi `IMT-YYYYMMDD-NNNN` unik dan tidak pernah dipakai ulang, termasuk untuk pengajuan yang ditolak | `<!-- ISI -->` |
+| **BR-10** | Setiap perubahan status wajib punya aktor dan timestamp; tidak ada perubahan "oleh sistem" tanpa jejak sebab | `backend/src/services/status.service.ts` (`ubahStatus` — satu-satunya penulis kolom `status`; menulis status dan audit dalam satu transaksi yang tidak bisa dipisah) |
+| **BR-11** | NIK dan foto dokumen adalah data pribadi: tidak boleh muncul di log aplikasi, pesan error, atau URL | `backend/src/lib/logger.ts` (redaksi di serializer, bukan di pemanggil) + `middleware/error.ts` (galat tak terduga selalu memakai pesan generik) |
+| **BR-12** | Nomor referensi `IMT-YYYYMMDD-NNNN` unik dan tidak pernah dipakai ulang, termasuk untuk pengajuan yang ditolak | `backend/src/domain/nomor-referensi.ts` + baris terkunci `urutan_referensi` di `services/pengajuan.service.ts` (penghitung hanya naik) |
 
 ### 5.1 Tabel parameter — wajib sebagai data, bukan konstanta
 
@@ -469,8 +469,33 @@ Agent **tidak boleh**:
 <!-- ISI: larangan tambahan dari pengalaman tim. Format:
      16. <larangan> — ditambahkan setelah DEVLOG-xx, karena <apa yang terjadi>. -->
 
-16. `<!-- ISI -->`
-17. `<!-- ISI -->`
+16. **Menganggap `REVOKE UPDATE, DELETE` sebagai penjagaan yang mengikat.** REVOKE tidak
+    berpengaruh terhadap PEMILIK tabel, dan peran aplikasi kami (`imitra_app`) adalah
+    pemilik `audit_trail` di compose maupun di CI — karena dialah yang menjalankan migrasi.
+    Lapis ke-3 AC-13 sempat lolos review dalam keadaan tidak berfungsi sama sekali.
+    Penjagaan append-only sekarang berupa TRIGGER (migrasi `20260820134500`), yang berlaku
+    untuk semua peran. Aturan umumnya: **penjagaan di database wajib punya test yang
+    benar-benar menembak database**, bukan hanya membaca kodenya
+    (`tests/integration/audit-readonly.spec.ts`).
+
+17. **Menghapus baris `pengajuan` di dalam test untuk membersihkan data.** Trigger
+    append-only menolak UPDATE atas `audit_trail`, dan menghapus `pengajuan` memaksa
+    PostgreSQL meng-UPDATE `audit_trail.pengajuan_id` menjadi NULL — jadi penghapusannya
+    gagal. Itu disengaja: jejak keputusan pembiayaan tidak ikut terhapus bersama datanya.
+    Bersihkan dengan `prisma migrate reset`, dan buat data uji memakai NIK/username yang
+    unik per jalannya test (lihat `nikUji()` di `tests/integration/audit.spec.ts`).
+
+18. **Membuat `new PrismaClient()` di luar `lib/prisma.ts`.** Setiap instance membuka pool
+    koneksi sendiri. Anggaran kami 20 koneksi TOTAL untuk enam orang
+    (`docs/DATABASE.md` bagian 2), dan gejala kehabisannya muncul di laptop ORANG LAIN,
+    jauh dari sebabnya. Alasan yang sama membuat test integrasi berjalan berurutan
+    (`fileParallelism: false` di `vitest.config.ts`).
+
+19. **Menulis test yang hanya menguji jalur gagal.** Pola tanggal pada `GET /api/audit`
+    sempat kehilangan escape-nya (`\d` menjadi `d`), sehingga SELURUH tanggal yang sah
+    ditolak — dan test "tanggal salah ditolak" tetap hijau, karena tanggal salah memang
+    ikut ditolak. Setiap validasi wajib punya pasangan test: satu yang ditolak, satu yang
+    DITERIMA.
 
 ---
 
