@@ -2,9 +2,15 @@ import type { Akad, JenisNasabah } from '@prisma/client'
 import { prisma, rupiahKeNumber } from '../lib/prisma.js'
 import { AksesDitolak, PelanggaranAturan, TidakDitemukan } from '../lib/errors.js'
 import { kunciTanggal, rakitNomorReferensi } from '../domain/nomor-referensi.js'
-import { batasDariAmbang, validasiBatasPlafon, validasiJumlahAnggota } from '../domain/plafon.js'
+import {
+  MAKS_ANGGOTA_MAJELIS,
+  batasDariAmbang,
+  validasiBatasPlafon,
+  validasiJumlahAnggota,
+} from '../domain/plafon.js'
 import { hitungTotalPlafon, urutanApprovalUntuk } from '../domain/approval.js'
 import { bacaAmbangApproval } from './parameter.service.js'
+import { tulisAudit, AKSI } from './audit.service.js'
 import { ubahStatus, statusTerminal } from './status.service.js'
 import type { PenggunaToken } from '../middleware/rbac.js'
 
@@ -45,16 +51,18 @@ export type MasukanBuatPengajuan = {
  */
 async function nomorReferensiBerikutnya(tx: typeof prisma, sekarang: Date): Promise<string> {
   const kunci = kunciTanggal(sekarang)
-  await tx.urutanReferensi.upsert({
-    where: { tanggal: kunci },
-    create: { tanggal: kunci, urutanTerakhir: 0 },
-    update: {},
-  })
-  const baris = await tx.urutanReferensi.update({
-    where: { tanggal: kunci },
-    data: { urutanTerakhir: { increment: 1 } },
-  })
-  return rakitNomorReferensi(kunci, baris.urutanTerakhir)
+  // Upsert-increment atomik dalam satu pernyataan: INSERT ... ON CONFLICT DO
+  // UPDATE. Dua AO (atau dua test paralel) yang membuat pengajuan pada tanggal
+  // yang sama tidak lagi bertabrakan pada create terpisah — nomor tetap unik dan
+  // hanya naik (BR-12).
+  const baris = await tx.$queryRaw<{ urutan_terakhir: number }[]>`
+    INSERT INTO "urutan_referensi" ("tanggal", "urutan_terakhir")
+    VALUES (${kunci}, 1)
+    ON CONFLICT ("tanggal")
+    DO UPDATE SET "urutan_terakhir" = "urutan_referensi"."urutan_terakhir" + 1
+    RETURNING "urutan_terakhir"
+  `
+  return rakitNomorReferensi(kunci, baris[0].urutan_terakhir)
 }
 
 export async function buatPengajuan(aktor: PenggunaToken, masukan: MasukanBuatPengajuan) {
@@ -240,4 +248,182 @@ export async function daftarPengajuan(aktor: PenggunaToken, filterStatus?: strin
     ),
     diubahPada: p.diubahPada,
   }))
+}
+
+// ---------------------------------------------------------------------------
+//  Anggota majelis (FR-10, AC-14)
+// ---------------------------------------------------------------------------
+
+const STATUS_BOLEH_UBAH_ANGGOTA = ['DRAFT', 'DIKEMBALIKAN']
+
+/** Tambah satu anggota ke pengajuan KELOMPOK selama masih DRAFT/DIKEMBALIKAN. */
+export async function tambahAnggota(
+  aktor: PenggunaToken,
+  pengajuanId: string,
+  masukan: MasukanAnggota,
+) {
+  const pengajuan = await prisma.pengajuan.findUnique({
+    where: { id: pengajuanId },
+    include: { anggota: true },
+  })
+  if (!pengajuan) throw new TidakDitemukan('Pengajuan tidak ditemukan')
+  if (pengajuan.dibuatOleh !== aktor.id) {
+    throw new AksesDitolak('Anda hanya dapat mengubah pengajuan milik Anda sendiri')
+  }
+  if (!STATUS_BOLEH_UBAH_ANGGOTA.includes(pengajuan.status)) {
+    throw new PelanggaranAturan('FR-10', `Anggota hanya dapat diubah saat DRAFT atau DIKEMBALIKAN`)
+  }
+  if (pengajuan.jenisNasabah !== 'KELOMPOK') {
+    throw new PelanggaranAturan('FR-10', 'Anggota tambahan hanya untuk pengajuan kelompok')
+  }
+  if (!/^\d{16}$/.test(masukan.nik)) {
+    throw new PelanggaranAturan('FR-02', 'NIK harus 16 digit angka')
+  }
+  const aktif = pengajuan.anggota.filter((a) => a.statusAnggota === 'AKTIF').length
+  if (aktif >= MAKS_ANGGOTA_MAJELIS) {
+    throw new PelanggaranAturan('FR-10', `Pembiayaan kelompok maksimal ${MAKS_ANGGOTA_MAJELIS} anggota`)
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const nasabah = await tx.nasabah.upsert({
+      where: { nik: masukan.nik },
+      create: {
+        nik: masukan.nik,
+        nama: masukan.nama,
+        alamat: masukan.alamat,
+        jenisUsaha: masukan.jenisUsaha,
+      },
+      update: { nama: masukan.nama, alamat: masukan.alamat, jenisUsaha: masukan.jenisUsaha },
+    })
+
+    const duplikat = pengajuan.anggota.find((a) => a.nasabahId === nasabah.id)
+    if (duplikat) {
+      throw new PelanggaranAturan('FR-10', 'Nasabah ini sudah menjadi anggota pengajuan ini')
+    }
+
+    const urutanBaru = pengajuan.anggota.length + 1
+    const anggota = await tx.pengajuanAnggota.create({
+      data: {
+        pengajuanId,
+        nasabahId: nasabah.id,
+        plafonDiajukan: BigInt(masukan.plafonDiajukan),
+        urutan: urutanBaru,
+      },
+    })
+
+    await tulisAudit(tx, {
+      pengajuanId,
+      aktorId: aktor.id,
+      aktorPeran: aktor.peran,
+      aksi: AKSI.UBAH_STATUS,
+      metadata: { sebab: 'Tambah anggota majelis', anggotaId: anggota.id, urutan: urutanBaru },
+    })
+
+    return { id: anggota.id, urutan: urutanBaru, statusAnggota: anggota.statusAnggota }
+  })
+}
+
+/** Ubah plafon satu anggota selama pengajuan masih DRAFT/DIKEMBALIKAN. */
+export async function ubahAnggota(
+  aktor: PenggunaToken,
+  pengajuanId: string,
+  anggotaId: string,
+  plafonDiajukan: number,
+) {
+  const pengajuan = await prisma.pengajuan.findUnique({
+    where: { id: pengajuanId },
+    include: { anggota: true },
+  })
+  if (!pengajuan) throw new TidakDitemukan('Pengajuan tidak ditemukan')
+  if (pengajuan.dibuatOleh !== aktor.id) {
+    throw new AksesDitolak('Anda hanya dapat mengubah pengajuan milik Anda sendiri')
+  }
+  if (!STATUS_BOLEH_UBAH_ANGGOTA.includes(pengajuan.status)) {
+    throw new PelanggaranAturan('FR-10', 'Anggota hanya dapat diubah saat DRAFT atau DIKEMBALIKAN')
+  }
+  const anggota = pengajuan.anggota.find((a) => a.id === anggotaId)
+  if (!anggota) throw new TidakDitemukan('Anggota tidak ditemukan pada pengajuan ini')
+  if (!Number.isInteger(plafonDiajukan) || plafonDiajukan <= 0) {
+    throw new PelanggaranAturan('FR-02', 'Plafon harus bilangan bulat positif')
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.pengajuanAnggota.update({
+      where: { id: anggotaId },
+      data: { plafonDiajukan: BigInt(plafonDiajukan) },
+    })
+    await tulisAudit(tx, {
+      pengajuanId,
+      aktorId: aktor.id,
+      aktorPeran: aktor.peran,
+      aksi: AKSI.UBAH_STATUS,
+      metadata: { sebab: 'Ubah plafon anggota', anggotaId },
+    })
+  })
+
+  return { id: anggotaId, plafonDiajukan }
+}
+
+/**
+ * ANL menolak satu anggota (AC-14). Statusnya menjadi DITOLAK, dan total plafon
+ * serta level approval otomatis dihitung ulang saat berikutnya dibaca — tidak
+ * ada kode "evaluasi ulang level" (ADR-0002).
+ *
+ * Kelompok yang menyusut di bawah 3 anggota aktif ditolak: kelompok harus
+ * dibubarkan, bukan dibiarkan menjadi tidak sah (FR-10).
+ */
+export async function tolakAnggota(aktor: PenggunaToken, pengajuanId: string, anggotaId: string) {
+  const pengajuan = await prisma.pengajuan.findUnique({
+    where: { id: pengajuanId },
+    include: { anggota: true },
+  })
+  if (!pengajuan) throw new TidakDitemukan('Pengajuan tidak ditemukan')
+  if (statusTerminal(pengajuan.status)) {
+    throw new PelanggaranAturan('FR-10', `Pengajuan berstatus ${pengajuan.status} sudah final`)
+  }
+
+  const anggota = pengajuan.anggota.find((a) => a.id === anggotaId)
+  if (!anggota) throw new TidakDitemukan('Anggota tidak ditemukan pada pengajuan ini')
+  if (anggota.statusAnggota === 'DITOLAK') {
+    throw new PelanggaranAturan('FR-10', 'Anggota ini sudah ditolak')
+  }
+
+  const aktifSetelahnya = pengajuan.anggota.filter(
+    (a) => a.statusAnggota === 'AKTIF' && a.id !== anggotaId,
+  ).length
+
+  // Melempar bila jumlah aktif tersisa menjadi tidak sah untuk jenis nasabahnya.
+  validasiJumlahAnggota(pengajuan.jenisNasabah, aktifSetelahnya)
+
+  await prisma.$transaction(async (tx) => {
+    await tx.pengajuanAnggota.update({
+      where: { id: anggotaId },
+      data: { statusAnggota: 'DITOLAK' },
+    })
+    await tulisAudit(tx, {
+      pengajuanId,
+      aktorId: aktor.id,
+      aktorPeran: aktor.peran,
+      aksi: AKSI.TOLAK_ANGGOTA,
+      metadata: { anggotaId, sisaAnggotaAktif: aktifSetelahnya },
+    })
+  })
+
+  const anggotaBaru = pengajuan.anggota
+    .filter((a) => a.id !== anggotaId)
+    .map((a) => ({
+      plafonDiajukan: rupiahKeNumber(a.plafonDiajukan),
+      statusAnggota: a.statusAnggota,
+    }))
+  const totalPlafonBaru = hitungTotalPlafon(anggotaBaru)
+  const ambang = await bacaAmbangApproval()
+  const urutanBaru = urutanApprovalUntuk(totalPlafonBaru, ambang)
+
+  return {
+    id: anggotaId,
+    statusAnggota: 'DITOLAK',
+    totalPlafon: totalPlafonBaru,
+    jumlahLevel: urutanBaru.length,
+    urutanApproval: urutanBaru,
+  }
 }
