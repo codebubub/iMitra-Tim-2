@@ -9,7 +9,13 @@ import {
   daftarPengajuan,
   ringkasanPengajuan,
   submitPengajuan,
+  tambahAnggota,
+  tolakAnggota,
+  ubahAnggota,
 } from '../services/pengajuan.service.js'
+import { daftarkanRouteDokumen } from './dokumen.js'
+import { daftarkanRouteSurvei } from './survei.js'
+import { daftarkanRouteApproval } from './approval.js'
 import { TidakTerautentikasi } from '../lib/errors.js'
 
 /**
@@ -41,6 +47,10 @@ const skemaBuatPengajuan = z.object({
   akad: z.enum(['MURABAHAH', 'MUSYARAKAH']),
   tenorBulan: z.number().int(),
   anggota: z.array(skemaAnggota).min(1).max(10),
+})
+
+const skemaUbahAnggota = z.object({
+  plafonDiajukan: z.number().int().positive(),
 })
 
 export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
@@ -114,6 +124,34 @@ export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
     return submitPengajuan(req.pengguna!, id)
   })
 
+  // --- Anggota majelis (FR-10, AC-14) -------------------------------------
+
+  app.post('/api/pengajuan/:id/anggota', { config: { peran: ['AO'] } }, async (req, reply) => {
+    const { id } = req.params as { id: string }
+    const masukan = skemaAnggota.parse(req.body)
+    const hasil = await tambahAnggota(req.pengguna!, id, masukan)
+    return reply.code(201).send(hasil)
+  })
+
+  app.patch(
+    '/api/pengajuan/:id/anggota/:anggotaId',
+    { config: { peran: ['AO'] } },
+    async (req) => {
+      const { id, anggotaId } = req.params as { id: string; anggotaId: string }
+      const { plafonDiajukan } = skemaUbahAnggota.parse(req.body)
+      return ubahAnggota(req.pengguna!, id, anggotaId, plafonDiajukan)
+    },
+  )
+
+  app.post(
+    '/api/pengajuan/:id/anggota/:anggotaId/tolak',
+    { config: { peran: ['ANL'] } },
+    async (req) => {
+      const { id, anggotaId } = req.params as { id: string; anggotaId: string }
+      return tolakAnggota(req.pengguna!, id, anggotaId)
+    },
+  )
+
   // --- Audit trail (FR-09) — HANYA BACA ------------------------------------
   //
   // Tidak ada POST, PUT, PATCH, atau DELETE di bawah ini, dan tidak boleh
@@ -142,16 +180,23 @@ export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
     },
   )
 
+  // --- Modul route per FR (didaftarkan sebagai plugin) ---------------------
+  //
+  // Berkas route sendiri per pemilik FR, tidak menumpuk di berkas ini
+  // (docs/PEMBAGIAN-TIM.md). Milik Dani: dokumen (FR-03), survei (FR-04),
+  // approval (FR-08). Anggota majelis (FR-10) ada di atas karena menyentuh
+  // agregat pengajuan yang sama.
+  await daftarkanRouteDokumen(app)
+  await daftarkanRouteSurvei(app)
+  await daftarkanRouteApproval(app)
+
   // =========================================================================
   //  RUANG UNTUK ANGGOTA LAIN — tambahkan berkas route Anda sendiri di sini,
   //  jangan menumpuk di berkas ini. Lihat docs/PEMBAGIAN-TIM.md.
   //
-  //    routes/dokumen.ts    FR-03
-  //    routes/survei.ts     FR-04
   //    routes/slik.ts       FR-05
   //    routes/skoring.ts    FR-06
   //    routes/margin.ts     FR-07
-  //    routes/approval.ts   FR-08
   //    routes/parameter.ts  FR-13
   //    routes/notifikasi.ts FR-11
   // =========================================================================
