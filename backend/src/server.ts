@@ -1,28 +1,53 @@
-import { buatApp } from './app.js'
-import { env } from './config/env.js'
-import { logger } from './lib/logger.js'
-import { prisma } from './lib/prisma.js'
+import Fastify from 'fastify';
+import cors from '@fastify/cors';
+import { loadEnv } from '#config/env.js';
+import { errorHandler } from '#middleware/error.js';
+import { authMiddleware } from '#middleware/auth.js';
+import { slikRoutes } from '#routes/slik.js';
+import { skoringRoutes } from '#routes/skoring.js';
+import { parameterRoutes } from '#routes/parameter.js';
 
-async function jalankan(): Promise<void> {
-  const app = await buatApp()
+async function buildServer() {
+  const env = loadEnv();
+  const app = Fastify({ logger: { level: env.LOG_LEVEL } });
 
-  await app.listen({ port: env.port, host: '0.0.0.0' })
-  logger.info({ port: env.port, appEnv: env.appEnv, tz: env.tz }, 'backend iMitra siap')
+  app.setErrorHandler(errorHandler);
 
-  // Matikan dengan rapi supaya koneksi database tidak menggantung saat
-  // `docker compose down` — kalau tidak, restart berikutnya bisa kehabisan slot.
-  for (const sinyal of ['SIGINT', 'SIGTERM'] as const) {
-    process.on(sinyal, () => {
-      logger.info({ sinyal }, 'mematikan backend')
-      void app
-        .close()
-        .then(() => prisma.$disconnect())
-        .then(() => process.exit(0))
-    })
-  }
+  await app.register(cors, {
+    origin: env.CORS_ALLOWED_ORIGINS.split(',').map((s) => s.trim()),
+  });
+
+  app.get('/health', async () => ({ status: 'ok', env: env.APP_ENV }));
+
+  app.register(async function authRoutes(fastify) {
+    fastify.post('/api/auth/login', async (req, reply) => {
+      return reply.status(501).send({ error: 'BELUM_DIIMPLEMENTASI', message: 'Endpoint login akan diimplementasikan di PR berikutnya' });
+    });
+
+    fastify.get('/api/auth/me', { preHandler: authMiddleware }, async (req) => {
+      const user = (req as any).user;
+      return { id: user.id, username: user.username, peran: user.peran };
+    });
+  });
+
+  app.register(slikRoutes);
+  app.register(skoringRoutes);
+  app.register(parameterRoutes);
+
+  return app;
 }
 
-jalankan().catch((err) => {
-  logger.error({ err: err instanceof Error ? err.message : String(err) }, 'gagal start')
-  process.exit(1)
-})
+const start = async () => {
+  const app = await buildServer();
+  const env = loadEnv();
+  const port = Number(process.env.PORT) || env.PORT;
+  try {
+    await app.listen({ port, host: '0.0.0.0' });
+    app.log.info(`Backend listening on port ${port}`);
+  } catch (err) {
+    app.log.error(err);
+    process.exit(1);
+  }
+};
+
+start();

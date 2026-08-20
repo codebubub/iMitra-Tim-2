@@ -1,23 +1,15 @@
-# Backend iMitra. Multi-stage supaya image runtime tidak memuat devDependencies.
-FROM node:20-alpine AS build
+FROM node:20-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY tsconfig.json ./
-COPY prisma ./prisma
+COPY package.json tsconfig.json ./
 COPY src ./src
-RUN npx prisma generate && npm run build
+RUN npm ci && npm run build
 
-FROM node:20-alpine AS runtime
+FROM node:20-alpine
 WORKDIR /app
-ENV NODE_ENV=production
-COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=build /app/dist ./dist
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY package.json ./
 COPY prisma ./prisma
-# Direktori upload dipasang sebagai volume di docker-compose.yml.
-RUN mkdir -p /app/uploads
+ENV PORT=8080
 EXPOSE 8080
-CMD ["node", "dist/src/server.js"]
+CMD ["node", "dist/server.js"]
