@@ -7,8 +7,8 @@ import {
   kirimPengajuan,
   type Akad,
   type AnggotaBaru,
-  type DetailPengajuan,
   type JenisNasabah,
+  type RingkasBuatPengajuan,
 } from '../api/pengajuan'
 import { PanelGalat } from '../components/PanelGalat'
 
@@ -27,9 +27,21 @@ import { PanelGalat } from '../components/PanelGalat'
  *   disimpan, bukan dari ambang yang ditebak frontend.
  */
 
-type BarisAnggota = { nama: string; nik: string; plafon: string }
+type BarisAnggota = {
+  nama: string
+  nik: string
+  alamat: string
+  jenisUsaha: string
+  plafon: string
+}
 
-const anggotaKosong = (): BarisAnggota => ({ nama: '', nik: '', plafon: '' })
+const anggotaKosong = (): BarisAnggota => ({
+  nama: '',
+  nik: '',
+  alamat: '',
+  jenisUsaha: '',
+  plafon: '',
+})
 
 /** Format ribuan untuk tampilan input rupiah — presentasi, bukan aturan bisnis. */
 function formatRibuan(nilai: string): string {
@@ -75,18 +87,20 @@ export function BuatPengajuan() {
     const daftar = (kelompok ? anggota : anggota.slice(0, 1)).map((a) => ({
       nama: a.nama.trim(),
       nik: a.nik.replace(/\D/g, ''),
+      alamat: a.alamat.trim(),
+      jenisUsaha: a.jenisUsaha.trim(),
       plafonDiajukan: keAngka(a.plafon),
     }))
     return { jenisNasabah, akad, tenorBulan: Number(tenor) || 0, anggota: daftar }
   }
 
-  const simpanDraft = useMutation<DetailPengajuan, GalatApi>({
+  const simpanDraft = useMutation<RingkasBuatPengajuan, GalatApi>({
     mutationFn: () => buatPengajuan(bangunPayload()),
     onSuccess: (d) => navigate(`/pengajuan/${d.id}`),
     onError: setGalat,
   })
 
-  const kirim = useMutation<DetailPengajuan, GalatApi>({
+  const kirim = useMutation<RingkasBuatPengajuan, GalatApi>({
     mutationFn: async () => {
       const draft = await buatPengajuan(bangunPayload())
       return kirimPengajuan(draft.id)
@@ -155,6 +169,25 @@ export function BuatPengajuan() {
                   value={anggota[0].nik}
                   onChange={(e) => setAnggotaField(0, { nik: e.target.value.replace(/\D/g, '') })}
                   placeholder="16 digit"
+                  required
+                />
+                <label htmlFor="alamat0" style={{ marginTop: 12 }}>
+                  Alamat
+                </label>
+                <input
+                  id="alamat0"
+                  value={anggota[0].alamat}
+                  onChange={(e) => setAnggotaField(0, { alamat: e.target.value })}
+                  required
+                />
+                <label htmlFor="usaha0" style={{ marginTop: 12 }}>
+                  Jenis usaha
+                </label>
+                <input
+                  id="usaha0"
+                  value={anggota[0].jenisUsaha}
+                  onChange={(e) => setAnggotaField(0, { jenisUsaha: e.target.value })}
+                  placeholder="mis. Warung kelontong"
                   required
                 />
               </div>
@@ -235,6 +268,24 @@ export function BuatPengajuan() {
                   maxLength={16}
                   value={a.nik}
                   onChange={(e) => setAnggotaField(i, { nik: e.target.value.replace(/\D/g, '') })}
+                  required
+                />
+                <label htmlFor={`alamat${i}`} style={{ marginTop: 8 }}>
+                  Alamat
+                </label>
+                <input
+                  id={`alamat${i}`}
+                  value={a.alamat}
+                  onChange={(e) => setAnggotaField(i, { alamat: e.target.value })}
+                  required
+                />
+                <label htmlFor={`usaha${i}`} style={{ marginTop: 8 }}>
+                  Jenis usaha
+                </label>
+                <input
+                  id={`usaha${i}`}
+                  value={a.jenisUsaha}
+                  onChange={(e) => setAnggotaField(i, { jenisUsaha: e.target.value })}
                   required
                 />
                 <label htmlFor={`plafon${i}`} style={{ marginTop: 8 }}>

@@ -44,16 +44,16 @@ atau `Done (tanpa test)` dan jelaskan di `README.md` bagian 5.
 | FR | Judul | Prioritas | AC terkait | Endpoint | File test | PR | Status |
 |---|---|---|---|---|---|---|---|
 | FR-01 | Autentikasi & Otorisasi Berbasis Peran | P0 | AC-01, AC-02 |  |  |  |  |
-| FR-02 | Pengajuan Pembiayaan Mikro | P0 | AC-01 |  |  |  |  |
-| FR-03 | Upload & Verifikasi Dokumen | P0 | AC-03 |  |  |  |  |
-| FR-04 | Survei Lapangan (OTS) | P0 | AC-04 |  |  |  |  |
+| FR-02 | Pengajuan Pembiayaan Mikro | P0 | AC-01 | FE `/pengajuan/baru` (BuatPengajuan.tsx); BE `POST /api/pengajuan`, `POST .../submit` |  | #_ | In Progress (FE selesai; BE submit ada di jalur app.ts, belum dirakit di server.ts) |
+| FR-03 | Upload & Verifikasi Dokumen | P0 | AC-03 | FE `/pengajuan/:id/dokumen` (UploadDokumen.tsx), `/pengajuan/:id/verifikasi-dokumen` (VerifikasiDokumen.tsx) |  | #_ | In Progress (FE selesai; BE endpoint dokumen milik Dani belum ada) |
+| FR-04 | Survei Lapangan (OTS) | P0 | AC-04 | FE `/pengajuan/:id/survei` (Survei.tsx) |  | #_ | In Progress (FE selesai; BE endpoint survei milik Dani belum ada) |
 | FR-05 | SLIK Check | P0 | AC-05, AC-06 |  |  |  |  |
 | FR-06 | Skoring Kelayakan Mikro | P0 | AC-06, AC-07, AC-08 |  |  |  |  |
 | FR-07 | Perhitungan Margin / Nisbah | P0 | AC-09 |  |  |  |  |
 | FR-08 | Approval Berjenjang | P0 | AC-10, AC-11 |  |  |  |  |
 | FR-09 | Audit Trail | P0 | AC-08, AC-12, AC-13 |  |  |  |  |
-| FR-10 | Pembiayaan Kelompok (Majelis) | P1 | AC-14 |  |  |  |  |
-| FR-11 | Notifikasi Perubahan Status | P1 | — |  |  |  |  |
+| FR-10 | Pembiayaan Kelompok (Majelis) | P1 | AC-14 | FE `/pengajuan/baru` varian majelis (BuatPengajuan.tsx) |  | #_ | In Progress (FE: form 3-10 anggota + total plafon live selesai; BE anggota/tolak milik Dani belum ada) |
+| FR-11 | Notifikasi Perubahan Status | P1 | — | FE `/notifikasi` (Notifikasi.tsx); BE `GET /api/notifikasi`, `POST .../baca` |  | #_ | In Progress (FE selesai; BE endpoint notifikasi belum ada) |
 | FR-12 | Dashboard Pipeline | P1 | — |  |  |  |  |
 | FR-13 | Parameter Terkonfigurasi | P1 | AC-15 |  |  |  |  |
 | FR-14 | Simulasi angsuran murabahah & proyeksi bagi hasil musyarakah | P2 | — |  |  |  |  |

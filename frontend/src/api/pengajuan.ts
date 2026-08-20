@@ -30,10 +30,23 @@ export type Anggota = {
   id: string
   nama: string
   /** NIK sudah bertopeng dari server (BR-11) — mis. 3404********0001. */
-  nikTertutup: string
+  nikTersamar: string
+  jenisUsaha?: string
   plafonDiajukan: number
   statusAnggota: StatusAnggota
   urutan: number
+}
+
+/**
+ * Ringkasan hasil buat/submit pengajuan. Server mengembalikan bentuk ringkas
+ * ini dari POST /api/pengajuan dan POST .../submit (id + nomor referensi +
+ * status), bukan detail penuh — detail penuh diambil terpisah via
+ * ambilDetailPengajuan().
+ */
+export type RingkasBuatPengajuan = {
+  id: string
+  nomorReferensi: string
+  status: string
 }
 
 /** Detail satu pengajuan. Total plafon & level approval DIHITUNG server (ADR-0002). */
@@ -44,25 +57,25 @@ export type DetailPengajuan = {
   akad: Akad
   tenorBulan: number
   status: string
-  marginPersen: number | null
-  nisbahBankPersen: number | null
-  catatanAnalis: string | null
-  dibuatOleh: { id: string; nama: string; peran: string }
-  dibuatPada: string
-  diubahPada: string
-  anggota: Anggota[]
-  /** Jumlah dari plafon anggota AKTIF saja — dihitung server. */
+  terminal: boolean
   totalPlafon: number
   /** Urutan peran approval yang diperlukan, mis. ['KCP','KC','KOM']. */
-  levelApproval: string[]
+  urutanApproval: string[]
+  /** Jumlah level = panjang urutanApproval. Dihitung server. */
+  jumlahLevel: number
+  dibuatOleh: { id: string; nama: string }
+  anggota: Anggota[]
 }
 
-/** Satu anggota di dalam permintaan pembuatan pengajuan. */
+/**
+ * Satu anggota di dalam permintaan pembuatan pengajuan.
+ * alamat & jenisUsaha WAJIB — server (zod) menolak string kosong.
+ */
 export type AnggotaBaru = {
   nama: string
   nik: string
-  alamat?: string
-  jenisUsaha?: string
+  alamat: string
+  jenisUsaha: string
   plafonDiajukan: number
 }
 
@@ -74,8 +87,8 @@ export type BuatPengajuanInput = {
 }
 
 /** POST /api/pengajuan — buat DRAFT (perorangan atau kelompok). */
-export function buatPengajuan(input: BuatPengajuanInput): Promise<DetailPengajuan> {
-  return api<DetailPengajuan>('/api/pengajuan', {
+export function buatPengajuan(input: BuatPengajuanInput): Promise<RingkasBuatPengajuan> {
+  return api<RingkasBuatPengajuan>('/api/pengajuan', {
     method: 'POST',
     body: JSON.stringify(input),
   })
@@ -112,8 +125,8 @@ export function ubahPengajuan(
 }
 
 /** POST /api/pengajuan/{id}/submit — BR-01 divalidasi di server, nomor referensi dibangkitkan (AC-01). */
-export function kirimPengajuan(id: string): Promise<DetailPengajuan> {
-  return api<DetailPengajuan>(`/api/pengajuan/${id}/submit`, { method: 'POST' })
+export function kirimPengajuan(id: string): Promise<RingkasBuatPengajuan> {
+  return api<RingkasBuatPengajuan>(`/api/pengajuan/${id}/submit`, { method: 'POST' })
 }
 
 /** POST /api/pengajuan/{id}/anggota — tambah anggota majelis (3–10). */
