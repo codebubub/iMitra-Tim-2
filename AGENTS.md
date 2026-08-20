@@ -30,15 +30,12 @@
 
 **Riwayat perubahan berkas ini** (isi setiap kali berubah — ini bukti evolusi):
 
-<!-- ISI: satu baris per perubahan. Contoh isi:
-     | 2026-08-20 13:40 | Andi | Larang agent membuat migrasi baru tanpa persetujuan Tech Lead | DEVLOG-04 | -->
-
 | Tanggal & jam | Oleh | Perubahan | Dipicu oleh |
 |---|---|---|---|
-|  |  | Versi awal |  |
-|  |  |  |  |
-|  |  |  |  |
-|  |  |  |  |
+| 2026-08-20 09:45 | Tech Lead | Versi awal dari template hackathon | — |
+| 2026-08-20 10:30 | Tech Lead | Isi bagian 2 (stack Node/TS/Fastify/Prisma/React), bagian 3 (struktur direktori + aturan lapisan), bagian 4.1 (konvensi + 15 nilai enum status), bagian 5.1 (nama tabel parameter + 4 parameter asumsi), bagian 7 (perintah test & lint) | ADR-0001, ADR-0002, ADR-0003 |
+| `<!-- ISI -->` | `<!-- ISI -->` | `<!-- ISI: larangan baru setelah AI melanggar sesuatu -->` | `<!-- ISI: DEVLOG-xx -->` |
+| `<!-- ISI -->` | `<!-- ISI -->` | `<!-- ISI -->` | `<!-- ISI -->` |
 
 ---
 
@@ -84,41 +81,63 @@ sebagai kesalahan prioritas.
 
 ## 2. Stack & Versi
 
-<!-- ISI: isi persis, termasuk versi mayor-minor. "Node terbaru" bukan versi.
-     Agent akan menghasilkan kode yang salah kalau versi tidak jelas — misalnya memakai API
-     yang baru ada di versi berikutnya, atau sintaks yang sudah dihapus.
-     Hapus baris yang tidak Anda pakai; jangan tinggalkan baris kosong berisi tanda tanya. -->
+Alasan pemilihan ada di [`docs/adr/0001-pilihan-stack.md`](docs/adr/0001-pilihan-stack.md).
+Nilai di tabel ini harus sama persis dengan tabel Keputusan di ADR itu dan dengan
+`docs/SDD-iMitra.md` BAB 1.3 — kalau berbeda, salah satunya sudah usang.
 
 | Lapisan | Teknologi | Versi | Catatan |
 |---|---|---|---|
-| Bahasa backend | `<!-- ISI -->` | `<!-- ISI -->` |  |
-| Framework backend | `<!-- ISI -->` | `<!-- ISI -->` |  |
-| Bahasa/framework frontend | `<!-- ISI -->` | `<!-- ISI -->` |  |
-| Database | `<!-- ISI -->` | `<!-- ISI -->` |  |
-| ORM / query layer | `<!-- ISI -->` | `<!-- ISI -->` |  |
-| Tool migrasi | `<!-- ISI -->` | `<!-- ISI -->` |  |
-| Test runner | `<!-- ISI -->` | `<!-- ISI -->` |  |
-| Linter / formatter | `<!-- ISI -->` | `<!-- ISI -->` |  |
-| Mock SLIK | `<!-- ISI -->` | `<!-- ISI -->` | Layanan terpisah, dipanggil via HTTP |
-| Runtime | Docker Compose | `<!-- ISI -->` |  |
+| Bahasa backend | TypeScript di Node.js | Node 20 LTS · TS 5.4 | `"type": "module"`, target ES2022 |
+| Framework backend | Fastify | 4.26 | Test integrasi memakai `app.inject()`, bukan port nyata |
+| Bahasa/framework frontend | React + Vite | React 18.2 · Vite 5.2 | TanStack Query 5 untuk data, React Router 6 untuk route |
+| Database | PostgreSQL | 16 (`postgres:16-alpine`) | Uang disimpan `bigint`, skor `numeric` — **jangan pakai `float` untuk keduanya** |
+| ORM / query layer | Prisma Client | 5.14 | Hanya dipakai di `repositories/` |
+| Tool migrasi | Prisma Migrate | 5.14 | `migrate dev` lokal, `migrate deploy` di container |
+| Test runner | Vitest + Supertest | Vitest 1.6 | `test:unit` tanpa database, `test:integration` dengan database |
+| Linter / formatter | ESLint + Prettier | ESLint 8.57 | Aturan batas lapisan ditegakkan lewat `import/no-restricted-paths` |
+| Validasi input | Zod | 3.23 | Di batas route saja; service menerima tipe hasil parsing |
+| Mock SLIK | TypeScript + Fastify | Node 20 LTS | Layanan terpisah, dipanggil via HTTP |
+| Runtime | Docker Compose | v2 | Tanpa kunci `version:` di `docker-compose.yml` |
 
-**Batasan versi yang tidak boleh diubah agent**: `<!-- ISI: mis. "jangan naikkan versi ORM,
-migrasi sudah dibuat untuk versi ini" -->`
+**Batasan versi yang tidak boleh diubah agent**:
+
+- Jangan naikkan versi mayor Prisma — migrasi sudah dibuat untuk 5.x.
+- Jangan ganti Fastify ke Express: seluruh test integrasi bergantung pada `app.inject()`.
+- Jangan tambah dependensi baru tanpa persetujuan Tech Lead (bagian 6 butir 1). Kebutuhan
+  yang sering muncul sudah tersedia: tanggal → API bawaan, HTTP keluar → `fetch` bawaan
+  Node 20, validasi → Zod, uang → `bigint`.
 
 ---
 
 ## 3. Struktur Direktori & Di Mana Kode Baru Diletakkan
 
-<!-- ISI: sesuaikan pohon di bawah dengan struktur nyata Anda setelah Sprint 0.
-     Ini bagian yang paling sering menyelamatkan waktu: tanpa ini, agent akan menaruh
-     kode di tempat baru setiap kali dan Anda akan punya tiga tempat berbeda untuk
-     aturan bisnis yang sama. -->
-
 ```
 /
-├── backend/          <!-- ISI: rincian isi -->
-├── frontend/         <!-- ISI: rincian isi -->
-├── mock-slik/        <!-- ISI: rincian isi -->
+├── backend/
+│   ├── prisma/
+│   │   ├── schema.prisma        # SATU sumber skema. Hanya Tech Lead yang menyentuhnya
+│   │   ├── migrations/          # Hasil `prisma migrate`, ikut di-commit
+│   │   └── seed.ts              # Idempoten (upsert), aman dijalankan berulang
+│   ├── src/
+│   │   ├── domain/              # ATURAN BISNIS. Fungsi murni, tanpa Prisma/HTTP/env
+│   │   ├── services/            # Orkestrasi, transaksi, penulisan audit
+│   │   ├── repositories/        # Satu-satunya tempat Prisma dipakai. Satu berkas per agregat
+│   │   ├── routes/              # Fastify route + skema Zod. Tanpa keputusan bisnis
+│   │   ├── middleware/          # auth.ts, rbac.ts, error.ts
+│   │   ├── clients/             # slik.client.ts — HTTP keluar, timeout, pemetaan galat
+│   │   ├── config/              # Satu-satunya tempat process.env dibaca
+│   │   └── lib/                 # logger.ts (redaksi BR-11), kelas galat, util waktu
+│   └── tests/
+│       ├── unit/                # domain/ saja, tanpa database
+│       └── integration/         # app.inject() + database test
+├── frontend/
+│   └── src/
+│       ├── pages/               # Satu berkas per layar (lihat SDD BAB 6.1)
+│       ├── components/          # Komponen yang dipakai ulang. TANPA aturan bisnis
+│       ├── api/                 # Klien HTTP + tipe respons
+│       └── auth/                # Guard route per peran (kenyamanan, BUKAN otorisasi)
+├── mock-slik/
+│   └── src/                     # Fastify, membaca fixtures/nasabah-uji.csv saat start
 ├── docs/
 ├── fixtures/
 └── docker-compose.yml
@@ -126,25 +145,32 @@ migrasi sudah dibuat untuk versi ini" -->`
 
 **Aturan penempatan (agent wajib mengikuti ini, bukan menebak)**:
 
-<!-- ISI: lengkapi tabel. Kolom "Lokasi" berisi path nyata di repo Anda.
-     Kolom "Jangan taruh di" penting: ia mencegah agent menaruh logika bisnis di controller
-     atau di komponen UI, yang merupakan kesalahan paling umum pada kode hasil AI. -->
-
 | Jenis kode | Lokasi | Jangan taruh di |
 |---|---|---|
-| Aturan bisnis / perhitungan (skoring, margin, routing approval) | `<!-- ISI -->` | controller, komponen UI, middleware |
-| Endpoint / route handler | `<!-- ISI -->` |  |
-| Akses database / repository | `<!-- ISI -->` | service, controller |
-| Migrasi skema | `<!-- ISI -->` | mana pun selain direktori migrasi |
-| Seed data | `<!-- ISI -->` |  |
-| Test unit | `<!-- ISI -->` |  |
-| Test integrasi / API | `<!-- ISI -->` |  |
-| Komponen UI | `<!-- ISI -->` |  |
-| Pemanggil HTTP ke mock SLIK (client + penanganan error) | `<!-- ISI -->` | dipanggil langsung dari controller |
-| Konfigurasi / pembacaan env | `<!-- ISI -->` | tersebar di seluruh kode |
+| Aturan bisnis / perhitungan (skoring, margin, routing approval) | `backend/src/domain/` | route handler, komponen UI, middleware, repository |
+| Endpoint / route handler | `backend/src/routes/` | — |
+| Orkestrasi kasus penggunaan + transaksi | `backend/src/services/` | route handler |
+| Akses database / repository | `backend/src/repositories/` | service, route, `domain/` |
+| Migrasi skema | `backend/prisma/migrations/` | mana pun selain direktori migrasi |
+| Seed data | `backend/prisma/seed.ts` | migrasi, test |
+| Test unit | `backend/tests/unit/` | — |
+| Test integrasi / API | `backend/tests/integration/` | — |
+| Komponen UI | `frontend/src/components/`, layar di `frontend/src/pages/` | — |
+| Pemanggil HTTP ke mock SLIK (client + penanganan error) | `backend/src/clients/slik.client.ts` | dipanggil langsung dari route handler, atau dari `domain/` |
+| Konfigurasi / pembacaan env | `backend/src/config/env.ts` | tersebar di seluruh kode |
+| Perubahan status pengajuan | `backend/src/services/status.service.ts` — **satu-satunya modul yang boleh menulis kolom `status`** | service mana pun yang lain |
 
-**Aturan lapisan**: `<!-- ISI: mis. "controller tidak boleh mengakses database langsung;
-selalu lewat service → repository. Aturan bisnis tidak boleh tahu tentang HTTP." -->`
+**Aturan lapisan** (ditegakkan lint lewat `import/no-restricted-paths`):
+
+- Arah ketergantungan hanya ke bawah: `routes/ → services/ → { domain/, repositories/, clients/ }`.
+- `domain/` **tidak boleh** mengimpor Prisma, Fastify, `process.env`, atau memanggil
+  `Date.now()` tanpa injeksi. Ia menerima parameter sebagai argumen dan mengembalikan hasil.
+  Konsekuensi: setiap BR bisa diuji tanpa menyalakan server.
+- `routes/` tidak boleh menyentuh Prisma dan tidak boleh memutuskan apa pun. Kalau sebuah
+  route handler memuat `if` yang membandingkan angka bisnis, kode itu salah tempat.
+- `repositories/` tidak boleh memanggil `domain/` maupun `services/`.
+- Parameter bisnis dibaca service dari database **pada setiap pemanggilan**, tidak di-cache
+  di proses (ADR-0003), lalu diteruskan ke `domain/` sebagai argumen.
 
 ---
 
@@ -152,33 +178,45 @@ selalu lewat service → repository. Aturan bisnis tidak boleh tahu tentang HTTP
 
 ### 4.1 Penamaan
 
-<!-- ISI: sesuaikan dengan bahasa pilihan Anda. Yang penting: KONSISTEN dan TERTULIS.
-     Agent tidak punya preferensi; ia akan meniru apa pun yang Anda tulis di sini,
-     dan kalau tidak Anda tulis, ia akan meniru gaya campur aduk dari data latihannya. -->
-
 | Objek | Konvensi | Contoh |
 |---|---|---|
-| Tabel database | `<!-- ISI -->` | `<!-- ISI -->` |
-| Kolom database | `<!-- ISI -->` | `<!-- ISI -->` |
-| Kelas / tipe | `<!-- ISI -->` | `<!-- ISI -->` |
-| Fungsi / method | `<!-- ISI -->` | `<!-- ISI -->` |
-| Berkas | `<!-- ISI -->` | `<!-- ISI -->` |
-| Endpoint | `<!-- ISI -->` | `<!-- ISI -->` |
-| Enum status | `<!-- ISI -->` | `<!-- ISI -->` |
+| Tabel database | `snake_case`, tunggal, istilah domain Indonesia | `pengajuan`, `pengajuan_anggota`, `hasil_skoring`, `rincian_komponen_skor` |
+| Kolom database | `snake_case` | `plafon_diajukan`, `kondisi_usaha_skala`, `status_panggilan` |
+| Kelas / tipe | `PascalCase` | `HasilSkoring`, `PelanggaranAturan`, `PenyediaIdentitas` |
+| Fungsi / method | `camelCase`, kata kerja di depan | `hitungSkorAkhir`, `validasiMargin`, `periksaPrasyarat` |
+| Berkas | `kebab-case.ts`, dengan sufiks lapisan | `skoring.service.ts`, `pengajuan.repo.ts`, `slik.client.ts`, `prasyarat-skoring.ts` |
+| Komponen React | `PascalCase.tsx` | `RincianSkor.tsx`, `AntrianApproval.tsx` |
+| Endpoint | jamak, `kebab-case`, id sebagai path param | `POST /api/pengajuan/{id}/slik-check`, `GET /api/approval/antrian` |
+| Enum status | `SCREAMING_SNAKE_CASE` | `MENUNGGU_APPROVAL_L1`, `REJECTED_SLIK` |
+| Berkas test | `<subjek>.spec.ts` | `skoring.spec.ts`, `rbac.spec.ts` |
 | Branch | `feat/FR-NN-slug`, `fix/FR-NN-slug` | `feat/FR-06-skoring`, `fix/FR-03-reupload` |
 
-**Bahasa dalam kode**: `<!-- ISI: putuskan sekali dan tegakkan. Pilihan yang lazim:
-istilah domain dalam Bahasa Indonesia (pengajuan, survei, plafon, nisbah, skoring),
-sisanya dalam Bahasa Inggris. Yang dilarang adalah mencampur keduanya untuk konsep yang
-sama — "pengajuan" di satu berkas dan "application" di berkas lain akan membuat agent
-membuat dua entitas untuk satu hal. -->`
+**Bahasa dalam kode**: **istilah domain dalam Bahasa Indonesia** (`pengajuan`, `nasabah`,
+`survei`, `plafon`, `nisbah`, `skoring`, `dokumen`, `anggota`); **sisanya Bahasa Inggris**
+(`service`, `repository`, `middleware`, `router`, `client`, `config`). Nilai enum memakai
+istilah brief apa adanya, termasuk yang berbahasa Inggris (`DRAFT`, `APPROVED`).
 
-**Status pengajuan (enum wajib)**: nilai berikut berasal dari brief dan tidak boleh diganti
-namanya: `DRAFT`, `REJECTED_SLIK`, `REJECTED_SCORING`, `APPROVED`. Status dokumen: `VERIFIED`,
-`REJECTED`. Status survei: `VALID`. Keputusan approval: `APPROVE`, `REJECT`, `RETURN`.
-<!-- ISI: tambahkan status transisi lain yang Anda perlukan (mis. SUBMITTED, VERIFYING,
-     SCORED, WAITING_APPROVAL_L1) beserta diagram transisinya di SDD. Agent tidak boleh
-     menambah nilai enum baru tanpa memperbarui daftar ini dan SDD. -->
+Yang **dilarang**: memakai dua kata untuk satu konsep. `pengajuan` di satu berkas dan
+`application` di berkas lain akan membuat agent membuat dua entitas untuk satu hal. Kalau
+agent menghasilkan `LoanApplication`, `Applicant`, atau `creditScore`, ganti sebelum commit.
+
+**Status pengajuan (enum wajib)** — 15 nilai, diagram transisinya di
+`docs/SRS-iMitra.md` bagian 3.2. Empat nilai pertama berasal dari brief dan **tidak boleh
+diganti namanya**; sebelas sisanya adalah status transisi milik kami:
+
+`DRAFT` · `SUBMITTED` · `VERIFIKASI_DOKUMEN` · `DOKUMEN_DITOLAK` · `SLIK_OK` · `SLIK_GAGAL` ·
+`REJECTED_SLIK` · `SKORED` · `REJECTED_SCORING` · `MENUNGGU_APPROVAL_L1` ·
+`MENUNGGU_APPROVAL_L2` · `MENUNGGU_APPROVAL_L3` · `APPROVED` · `REJECTED` · `DIKEMBALIKAN`
+
+Terminal: `REJECTED_SLIK`, `REJECTED_SCORING`, `APPROVED`, `REJECTED`.
+
+Enum lain: dokumen `MENUNGGU`/`VERIFIED`/`REJECTED` · survei `DRAFT`/`VALID`/`TIDAK_VALID` ·
+keputusan approval `APPROVE`/`REJECT`/`RETURN` · anggota `AKTIF`/`DITOLAK` ·
+panggilan SLIK `OK`/`NOT_FOUND`/`UNAVAILABLE`/`TIMEOUT` · akad `MURABAHAH`/`MUSYARAKAH` ·
+kode alasan penolakan dokumen `BURAM`/`TIDAK_TERBACA`/`KADALUARSA`/`TIDAK_SESUAI_PEMOHON`/`BUKAN_JENIS_DOKUMEN`.
+
+**Agent tidak boleh menambah nilai enum baru** tanpa memperbarui daftar ini **dan**
+`docs/SRS-iMitra.md` bagian 3.2 **dan** `docs/SDD-iMitra.md` BAB 4.1.
 
 **Format nomor referensi pengajuan**: `IMT-YYYYMMDD-NNNN` (contoh: `IMT-20260820-0007`).
 Unik dan tidak pernah dipakai ulang, termasuk untuk pengajuan yang ditolak (BR-12).
@@ -355,15 +393,28 @@ termasuk sebagai nilai default, termasuk di dalam test.
 | Lama usaha | 20 | ≥ 36 bulan → 100; < 6 bulan → 0; linear di antaranya |
 | Hasil survei lapangan | 20 | Penilaian ANL atas kondisi usaha, skala 1–5, dikali 20 |
 
-**Nama tabel parameter di database Anda**:
-<!-- ISI: sebutkan nama tabel nyata, mis. parameter_skoring, ambang_approval, rentang_margin.
-     Tulis di sini supaya agent memakai nama yang benar tanpa menebak. -->
+**Nama tabel parameter di database kami** — pakai nama ini persis, jangan menebak:
 
-| Isi | Nama tabel |
-|---|---|
-| Bobot & aturan komponen skor | `<!-- ISI -->` |
-| Ambang approval per plafon | `<!-- ISI -->` |
-| Rentang margin/nisbah per grade | `<!-- ISI -->` |
+| Isi | Nama tabel | Dibaca oleh |
+|---|---|---|
+| Bobot & aturan komponen skor | `parameter_skoring` | `services/skoring.service.ts` pada **setiap** pemanggilan |
+| Ambang approval per plafon | `ambang_approval` | `services/approval.service.ts` **setiap kali level dihitung**, termasuk saat membaca detail |
+| Rentang margin/nisbah per grade | `rentang_margin` | `services/skoring.service.ts` (menurunkan grade dari skor) dan `services/margin.service.ts` (validasi BR-06) |
+
+Tabel `parameter_skoring` juga memuat empat parameter turunan asumsi tim
+(`docs/SRS-iMitra.md` bagian 2.5) — perlakukan sama seperti bobot, yaitu **data, bukan
+konstanta**:
+
+| Kode | Nilai awal | Asal |
+|---|---|---|
+| `MARGIN_REFERENSI_SKORING` | 15.5 (% p.a.) | A-1 — margin belum diketahui saat skoring, jadi angsuran dihitung dengan margin referensi |
+| `HARI_KERJA_PER_BULAN` | 25 | A-2 — dari §4.4 |
+| `MARGIN_USAHA_PERSEN` | 30 | A-2 — dari §4.4 |
+| `SLIK_MASA_BERLAKU_HARI` | 30 | A-8 — BR-04. **Bukan** variabel env |
+
+**Cara agent membaca parameter**: service membacanya dari database lalu **meneruskannya
+sebagai argumen** ke fungsi di `domain/`. Fungsi `domain/` tidak pernah membaca database
+sendiri, dan tidak pernah punya nilai default untuk parameter (ADR-0003).
 
 ### 5.2 Kontrak mock SLIK (tidak boleh diubah agent)
 
@@ -425,34 +476,42 @@ Agent **tidak boleh**:
 
 ## 7. Perintah Test & Lint
 
-<!-- ISI: perintah persis, bisa di-copy-paste. Harus identik dengan yang ada di
-     .github/workflows/ci.yml dan README.md bagian 2.6. Kalau agent diminta
-     "jalankan test", inilah yang ia jalankan. -->
+Perintah di bawah harus **identik** dengan `.github/workflows/ci.yml` dan `README.md`
+bagian 2.6. Kalau ketiganya berbeda, salah satunya sudah usang — perbaiki, jangan diamkan.
+Dijalankan dari direktori `backend/` kecuali disebut lain.
 
 ```bash
-# Instalasi dependensi
-<!-- ISI -->
+# Instalasi dependensi (semua layanan, dari root)
+npm ci --prefix backend && npm ci --prefix frontend && npm ci --prefix mock-slik
 
 # Migrasi (lingkungan test)
-<!-- ISI -->
+DATABASE_URL=$DATABASE_URL_TEST npx prisma migrate deploy
 
-# Seed data uji
-<!-- ISI -->
+# Seed data uji — idempoten, aman dijalankan dua kali
+DATABASE_URL=$DATABASE_URL_TEST npm run seed
 
-# Test unit
-<!-- ISI -->
+# Test unit (domain/ saja, tanpa database)
+npm run test:unit
 
-# Test integrasi / API
-<!-- ISI -->
+# Test integrasi / API (butuh database test yang sudah dimigrasi + di-seed)
+npm run test:integration
 
 # Lint
-<!-- ISI -->
+npm run lint
 
 # Format
-<!-- ISI -->
+npm run format
 
 # Semua sekaligus, sama seperti yang dijalankan CI
-<!-- ISI -->
+npm run ci        # = lint && test:unit && test:integration
+```
+
+**Menjalankan seluruh sistem** (dari root repo):
+
+```bash
+cp .env.example .env
+docker compose up --build          # migrasi + seed jalan otomatis
+docker compose down -v             # reset demo ke kondisi seed
 ```
 
 **Aturan Definition of Done untuk agent**: perubahan dianggap selesai hanya jika lint bersih,
