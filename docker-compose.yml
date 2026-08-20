@@ -1,0 +1,263 @@
+# =============================================================================
+#  docker-compose.yml — iMitra  (SKELETON, WAJIB DIISI)
+# =============================================================================
+#
+#  TARGET YANG DINILAI:
+#      git clone <repo> && cd <repo> && cp .env.example .env && docker compose up
+#  dari CLONE BERSIH di mesin penilai, dan seluruh sistem hidup.
+#  Brief §7.2 butir 1: "Kalau hanya jalan di laptop Anda, ia tidak jalan."
+#  Gate 2 (Kamis 15.30) menguji ini secara langsung.
+#
+#  Berkas ini sengaja dikirim dalam keadaan SELURUH SERVICE DI-COMMENT OUT,
+#  karena isinya bergantung pada stack yang Anda pilih di ADR-0001. Yang tersedia
+#  di bawah adalah kerangka + penjelasan apa yang harus diisi + contoh healthcheck.
+#
+#  Cara mengerjakan (perkiraan 30-40 menit di Sprint 0, oleh DevOps/Release):
+#    1. Hapus tanda komentar pada service `db` lebih dulu, jalankan, pastikan sehat.
+#    2. Lanjut ke `mock-slik` (paling sederhana, tanpa database).
+#    3. Lanjut ke `backend`, termasuk langkah migrasi + seed.
+#    4. Terakhir `frontend`.
+#    5. Uji dari direktori baru hasil clone, bukan dari direktori kerja Anda.
+#
+#  Empat kesalahan yang paling sering membuat penilai gagal menjalankan repo:
+#    a. Backend start sebelum database siap. `depends_on` biasa hanya menunggu
+#       container DIBUAT, bukan SIAP. Pakai `condition: service_healthy`.
+#    b. Frontend memanggil backend dengan nama service docker (http://backend:8080).
+#       Salah: pemanggilnya adalah BROWSER di host, bukan container. Pakai
+#       http://localhost:<BACKEND_PORT>. Backend memanggil mock-slik dengan nama
+#       service (http://mock-slik:9090) — itu yang benar, karena pemanggilnya container.
+#    c. Migrasi dan seed hanya pernah dijalankan manual di laptop pembuatnya,
+#       sehingga database penilai kosong.
+#    d. Nilai env hanya ada di .env lokal seseorang dan tidak ada di .env.example.
+#
+#  Nama variabel di bawah mengacu ke .env.example. Kalau Anda mengubahnya di satu
+#  tempat, ubah di kedua tempat.
+# =============================================================================
+
+# Compose modern tidak memerlukan kunci `version`. Jangan tambahkan kembali.
+
+services:
+
+  # ---------------------------------------------------------------------------
+  #  belum-diisi — HAPUS SERVICE INI setelah service pertama Anda aktif.
+  #  Ia ada semata-mata supaya berkas ini valid saat semua service masih
+  #  di-comment out (`services:` yang kosong ditolak oleh Docker Compose).
+  # ---------------------------------------------------------------------------
+  belum-diisi:
+    image: alpine:3
+    command: >
+      sh -c "echo 'docker-compose.yml belum diisi. Buka berkasnya, aktifkan service db,
+      mock-slik, backend, dan frontend, lalu hapus service belum-diisi ini.'"
+    networks:
+      - imitra
+
+  # ---------------------------------------------------------------------------
+  #  db — PostgreSQL
+  #  Aktifkan ini lebih dulu. Healthcheck di bawah adalah CONTOH LENGKAP YANG
+  #  SIAP DIPAKAI — pola inilah yang perlu Anda tiru untuk service lain.
+  # ---------------------------------------------------------------------------
+  # db:
+  #   image: postgres:16-alpine
+  #   container_name: imitra-db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: ${DB_NAME}
+  #     POSTGRES_USER: ${DB_USER}
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
+  #   ports:
+  #     # Ekspos ke host hanya untuk inspeksi manual (psql / DBeaver) saat debugging.
+  #     - "${DB_PORT}:5432"
+  #   volumes:
+  #     # Volume bernama, supaya data bertahan antar `docker compose up`.
+  #     # Untuk mereset demo: docker compose down -v
+  #     - imitra-db-data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     # CONTOH HEALTHCHECK — tiru pola ini untuk backend dan mock-slik.
+  #     test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+  #     interval: 5s      # sesering apa diperiksa
+  #     timeout: 3s       # batas satu kali pemeriksaan
+  #     retries: 10       # berapa kali gagal sebelum dinyatakan unhealthy
+  #     start_period: 10s # masa tenggang saat container baru start
+  #   networks:
+  #     - imitra
+
+  # ---------------------------------------------------------------------------
+  #  mock-slik — stub layanan SLIK (brief §6.1)
+  #
+  #  Yang harus Anda isi:
+  #    - build.context   : direktori mock-slik/ berisi Dockerfile
+  #    - kontrak endpoint: POST /slik/inquiry, respons 200 / 404 NIK_NOT_FOUND /
+  #      503 SERVICE_UNAVAILABLE (jangan diubah)
+  #    - pemuatan data   : fixtures/nasabah-uji.csv di-mount read-only, lalu dibaca
+  #      saat start. Jangan menyalin isi CSV ke dalam kode.
+  #    - cara memaksa 503 dan timeout untuk keperluan demo (NIK pemicu sudah ada
+  #      di fixtures; sediakan juga cara lain, mis. query param)
+  #    - healthcheck     : sediakan endpoint kesehatan sederhana, lalu tiru pola
+  #      healthcheck db di atas
+  # ---------------------------------------------------------------------------
+  # mock-slik:
+  #   build:
+  #     context: ./mock-slik
+  #   container_name: imitra-mock-slik
+  #   restart: unless-stopped
+  #   environment:
+  #     PORT: 9090
+  #     # Path fixtures DI DALAM container, bukan path di host.
+  #     FIXTURES_PATH: /app/fixtures/nasabah-uji.csv
+  #     LOG_LEVEL: ${LOG_LEVEL}
+  #   ports:
+  #     - "${MOCK_SLIK_PORT}:9090"
+  #   volumes:
+  #     # read-only: mock tidak boleh menulis ke fixtures.
+  #     - ./fixtures:/app/fixtures:ro
+  #   healthcheck:
+  #     # ISI: ganti dengan endpoint kesehatan milik Anda. Pastikan perintah yang
+  #     # dipakai (curl / wget) memang ADA di dalam image — ini penyebab umum
+  #     # container yang selalu unhealthy padahal layanannya hidup.
+  #     test: ["CMD-SHELL", "wget -qO- http://localhost:9090/health || exit 1"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 10
+  #     start_period: 5s
+  #   networks:
+  #     - imitra
+
+  # ---------------------------------------------------------------------------
+  #  backend — API
+  #
+  #  Yang harus Anda isi:
+  #    - build.context   : direktori backend/ berisi Dockerfile
+  #    - environment     : koneksi DB, JWT_SECRET, SLIK_BASE_URL, SLIK_TIMEOUT_MS,
+  #      UPLOAD_DIR, CORS_ALLOWED_ORIGINS (ambil dari .env, jangan tulis nilainya
+  #      langsung di berkas ini)
+  #    - depends_on      : db dan mock-slik, dengan condition: service_healthy
+  #    - migrasi & seed  : jalankan otomatis saat start ATAU sebagai service
+  #      terpisah `migrate` yang selesai lalu berhenti. Yang penting: penilai
+  #      TIDAK perlu menjalankan perintah tambahan. Seed wajib idempoten.
+  #    - volumes         : direktori upload, supaya berkas tidak hilang saat restart
+  #    - healthcheck     : endpoint kesehatan yang juga memeriksa koneksi database
+  # ---------------------------------------------------------------------------
+  # backend:
+  #   build:
+  #     context: ./backend
+  #   container_name: imitra-backend
+  #   restart: unless-stopped
+  #   environment:
+  #     APP_ENV: ${APP_ENV}
+  #     TZ: ${TZ}
+  #     LOG_LEVEL: ${LOG_LEVEL}
+  #     PORT: 8080
+  #     DATABASE_URL: ${DATABASE_URL}
+  #     JWT_SECRET: ${JWT_SECRET}
+  #     JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+  #     SEED_DEFAULT_PASSWORD: ${SEED_DEFAULT_PASSWORD}
+  #     # Nama service docker: benar, karena pemanggilnya container backend.
+  #     SLIK_BASE_URL: ${SLIK_BASE_URL}
+  #     SLIK_INQUIRY_PATH: ${SLIK_INQUIRY_PATH}
+  #     SLIK_TIMEOUT_MS: ${SLIK_TIMEOUT_MS}
+  #     SLIK_RETRY: ${SLIK_RETRY}
+  #     UPLOAD_DIR: /app/uploads
+  #     UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES}
+  #     CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+  #   ports:
+  #     - "${BACKEND_PORT}:8080"
+  #   volumes:
+  #     - imitra-uploads:/app/uploads
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     mock-slik:
+  #       condition: service_healthy
+  #   # ISI: perintah start. Kalau migrasi + seed dijalankan di sini, pastikan
+  #   # keduanya aman dijalankan berulang. Contoh bentuk (sesuaikan stack Anda):
+  #   # command: sh -c "<perintah migrasi> && <perintah seed> && <perintah start>"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 10
+  #     start_period: 20s
+  #   networks:
+  #     - imitra
+
+  # ---------------------------------------------------------------------------
+  #  frontend — UI
+  #
+  #  Yang harus Anda isi:
+  #    - build.context : direktori frontend/ berisi Dockerfile
+  #    - URL API       : WAJIB memakai http://localhost:${BACKEND_PORT}, karena
+  #      yang memanggil adalah browser di host. Untuk build tool yang menanamkan
+  #      nilai saat build (Vite, Next, CRA), nilai ini biasanya perlu dilewatkan
+  #      sebagai build arg, bukan environment runtime — periksa ini lebih awal,
+  #      bukan pada Jumat sore.
+  #    - mode          : dev server atau hasil build yang disajikan static server.
+  #      Untuk demo, hasil build lebih stabil.
+  # ---------------------------------------------------------------------------
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     args:
+  #       # ISI: sesuaikan nama variabel dengan framework Anda.
+  #       VITE_API_BASE_URL: http://localhost:${BACKEND_PORT}
+  #   container_name: imitra-frontend
+  #   restart: unless-stopped
+  #   environment:
+  #     TZ: ${TZ}
+  #   ports:
+  #     - "${FRONTEND_PORT}:80"
+  #   depends_on:
+  #     backend:
+  #       condition: service_healthy
+  #   networks:
+  #     - imitra
+
+  # ---------------------------------------------------------------------------
+  #  (opsional) migrate — service sekali jalan untuk migrasi + seed
+  #  Pakai pola ini kalau Anda tidak ingin menaruh migrasi di command backend.
+  #  Service ini selesai lalu berhenti; backend menunggunya dengan
+  #  condition: service_completed_successfully
+  # ---------------------------------------------------------------------------
+  # migrate:
+  #   build:
+  #     context: ./backend
+  #   container_name: imitra-migrate
+  #   environment:
+  #     DATABASE_URL: ${DATABASE_URL}
+  #   # ISI: perintah migrasi lalu seed. Keduanya wajib idempoten.
+  #   # command: sh -c "<perintah migrasi> && <perintah seed>"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   restart: "no"
+  #   networks:
+  #     - imitra
+
+# =============================================================================
+#  Volume & network
+# =============================================================================
+volumes:
+  # Hapus tanda komentar bersamaan dengan service yang memakainya.
+  # imitra-db-data:
+  # imitra-uploads:
+  # Placeholder supaya berkas ini tetap valid saat semua service masih di-comment.
+  imitra-placeholder:
+
+networks:
+  imitra:
+    driver: bridge
+
+# =============================================================================
+#  Checklist sebelum menyatakan berkas ini selesai
+#  (ulangi sebelum Gate 2 dan sekali lagi sebelum code freeze)
+#
+#   [ ] `docker compose config` tidak mengeluarkan error
+#   [ ] `docker compose up` berhasil dari direktori hasil clone BARU
+#   [ ] Semua service berstatus healthy (`docker compose ps`)
+#   [ ] Migrasi dan seed jalan otomatis; database penilai tidak kosong
+#   [ ] `docker compose up` kedua kali tidak error karena seed dijalankan ulang
+#   [ ] Frontend bisa login sebagai AO tanpa mengubah konfigurasi apa pun
+#   [ ] Backend berhasil memanggil mock-slik (uji dengan NIK dari fixtures)
+#   [ ] Cara mereset demo terdokumentasi di README.md bagian 2.4
+#   [ ] Semua variabel yang dipakai berkas ini ada di .env.example
+#   [ ] Tidak ada nilai secret yang ditulis langsung di berkas ini
+# =============================================================================

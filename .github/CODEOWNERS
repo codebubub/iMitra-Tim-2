@@ -1,0 +1,78 @@
+# =============================================================================
+#  CODEOWNERS — iMitra
+# =============================================================================
+#
+#  Fungsinya: GitHub otomatis meminta review dari pemilik berkas ketika sebuah PR
+#  menyentuh berkas itu. Manfaat nyata dalam hackathon 2 hari:
+#    - PR tidak menganggur menunggu "siapa yang review ini?"
+#    - Berkas yang mahal kalau salah (migrasi, docker-compose, AGENTS.md, ci.yml)
+#      selalu dilihat orang yang paham konsekuensinya.
+#
+#  Cara mengisi:
+#    1. Ganti seluruh @username di bawah dengan username GitHub anggota tim
+#       (dengan tanda @, persis seperti di GitHub). Pastikan orangnya punya akses
+#       tulis ke repo — kalau tidak, GitHub mengabaikan barisnya tanpa pesan.
+#    2. Hapus baris untuk direktori yang tidak ada di repo Anda.
+#    3. Aturan berikutnya menimpa aturan sebelumnya: baris paling BAWAH yang
+#       cocok yang menang. Karena itu aturan umum ditulis di atas, aturan khusus
+#       di bawah.
+#    4. Commit berkas ini di Sprint 0, lalu aktifkan "Require review from Code Owners"
+#       di Settings > Branches > branch protection rule untuk `main` (opsional,
+#       tetapi membuat aturan ini benar-benar mengikat).
+#
+#  Catatan penting: satu orang tidak boleh menjadi satu-satunya pemilik seluruh repo.
+#  Brief §8.3 mengurangi nilai kolaborasi kalau satu kontributor menulis > 50 % commit,
+#  dan CODEOWNERS yang isinya satu nama untuk semua path biasanya menghasilkan pola itu.
+#  Sebarkan kepemilikan sesuai peran (§10).
+#
+#  Format: <pola path>  <pemilik>  [pemilik lain]
+# =============================================================================
+
+# Default untuk seluruh repo — Tech Lead sebagai jaring terakhir.
+*                               @<!-- ISI: username Tech Lead -->
+
+# ---------------------------------------------------------------------------
+# Kode aplikasi
+# ---------------------------------------------------------------------------
+/backend/                       @<!-- ISI: username Backend Engineer 1 --> @<!-- ISI: username Backend Engineer 2 -->
+/frontend/                      @<!-- ISI: username Frontend Engineer -->
+/mock-slik/                     @<!-- ISI: username pemilik mock SLIK -->
+
+# Aturan bisnis dan perhitungan. Bagian paling mahal kalau salah:
+# skoring (BR-07, BR-08), margin (BR-06), routing approval (BR-01, BR-02).
+# SESUAIKAN pola path ini dengan struktur nyata Anda.
+# /backend/src/domain/           @<!-- ISI: Tech Lead --> @<!-- ISI: Backend Engineer -->
+
+# Migrasi: satu pemilik, supaya tidak ada dua migrasi bertabrakan.
+# Migrasi yang sudah di-merge tidak boleh diubah (AGENTS.md bagian 6 butir 2).
+# /backend/migrations/           @<!-- ISI: username DevOps / Release -->
+
+# ---------------------------------------------------------------------------
+# Test dan verifikasi
+# ---------------------------------------------------------------------------
+# SESUAIKAN pola path dengan lokasi test Anda.
+# /backend/tests/                @<!-- ISI: username QA / Verification -->
+# /frontend/tests/               @<!-- ISI: username QA / Verification -->
+
+# ---------------------------------------------------------------------------
+# Infrastruktur & rilis
+# ---------------------------------------------------------------------------
+/docker-compose.yml             @<!-- ISI: username DevOps / Release -->
+/.github/                       @<!-- ISI: username DevOps / Release -->
+/.env.example                   @<!-- ISI: username DevOps / Release -->
+
+# ---------------------------------------------------------------------------
+# Dokumentasi & artefak AI
+# ---------------------------------------------------------------------------
+# AGENTS.md dimiliki Tech Lead (brief §10). Perubahan tetap lewat PR.
+/AGENTS.md                      @<!-- ISI: username Tech Lead -->
+/CLAUDE.md                      @<!-- ISI: username Tech Lead -->
+
+# Artefak AI dimiliki AI Workflow Officer, tetapi diisi seluruh tim.
+/docs/AI-DEVLOG.md              @<!-- ISI: username AI Workflow Officer -->
+/docs/AI-WORKFLOW.md            @<!-- ISI: username AI Workflow Officer -->
+
+/docs/adr/                      @<!-- ISI: username Tech Lead -->
+/docs/TRACEABILITY.md           @<!-- ISI: username QA / Verification -->
+/docs/DEMO-SCRIPT.md            @<!-- ISI: username QA / Verification -->
+/fixtures/                      @<!-- ISI: username QA / Verification -->

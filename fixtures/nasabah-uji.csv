@@ -1,0 +1,13 @@
+nik,nama,jenis_usaha,kolektibilitas,jumlah_fasilitas_aktif,total_baki_debet,omzet_harian,lama_usaha_bulan,skenario
+3404110985000001,Siti Aminah,Warung Kelontong,1,1,8000000,800000,48,"Grade 1 - jalur bahagia plafon kecil"
+3404220790000002,Budi Santoso,Bengkel Motor,1,2,15000000,500000,30,"Grade 2 - approval 2 level"
+3404150688000003,Wahyu Nugroho,Pedagang Sayur,2,1,5000000,450000,20,"SLIK kol-2 - grade dipaksa minimal 3"
+3404031292000004,Endang Sulastri,Laundry Kiloan,4,3,42000000,600000,36,"SLIK kol-4 - penolakan otomatis"
+3404190883000005,Joko Prasetyo,Toko Bangunan,1,0,0,200000,5,"Usaha baru - grade 4/5, uji batas tidak dibiayai"
+3404270995000006,Ratna Dewi,Katering Rumahan,3,2,18000000,550000,28,"SLIK kol-3 - penolakan otomatis"
+3404080781000007,Slamet Riyadi,Peternak Ayam,1,1,25000000,1200000,60,"Grade 1 - plafon besar, approval 3 level"
+3404121189000008,Nur Hidayah,Konveksi,5,4,67000000,700000,42,"SLIK kol-5 - penolakan otomatis"
+3404300394000009,Agus Setiawan,Servis Elektronik,2,1,9000000,400000,24,"SLIK kol-2 + kapasitas sedang - grade 3"
+3404060586000010,Lestari Wulandari,Toko Sembako,1,1,12000000,650000,18,"Grade 2/3 - uji batas lama usaha"
+3404999999999999,TIDAK ADA DI SLIK,-,-,-,-,-,-,"NIK tidak ditemukan - uji respons 404"
+3404000000000503,PEMICU ERROR,-,-,-,-,-,-,"Pemicu respons 503 - uji penanganan layanan tidak tersedia"

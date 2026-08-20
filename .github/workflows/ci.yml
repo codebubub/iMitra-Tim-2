@@ -1,0 +1,452 @@
+# =============================================================================
+#  CI iMitra — WORKFLOW BAWAAN TEMPLATE, WAJIB DISESUAIKAN
+# =============================================================================
+#
+#  ####################################################################
+#  #                                                                  #
+#  #   PERINGATAN: WAJIB DISESUAIKAN DI SPRINT 0 (Kamis 09.45-11.00)   #
+#  #                                                                  #
+#  #   Berkas ini sengaja dibuat STACK-AGNOSTIC: ia mendeteksi         #
+#  #   package.json / go.mod / requirements.txt / *.csproj / pom.xml   #
+#  #   lalu menjalankan lint + test yang sesuai. Tujuannya supaya      #
+#  #   Anda punya CI yang hidup sejak commit pertama, BUKAN supaya     #
+#  #   Anda memakainya apa adanya sampai akhir.                        #
+#  #                                                                  #
+#  #   Setelah stack diputuskan (ADR-0001), GANTI berkas ini dengan    #
+#  #   workflow khusus stack Anda: perintah lint dan test yang persis  #
+#  #   sama dengan yang tertulis di AGENTS.md bagian 7 dan README      #
+#  #   bagian 2.6, plus service database kalau test integrasi          #
+#  #   memerlukannya. Deteksi otomatis lebih lambat dan lebih rapuh    #
+#  #   daripada workflow yang eksplisit.                               #
+#  #                                                                  #
+#  #   CI MERAH DI TAG v1.0.0 DIKENAI PENGURANGAN NILAI -5.            #
+#  #   CI yang dinonaktifkan, atau yang hijau karena tidak menjalankan  #
+#  #   test apa pun, dinilai sama dengan tidak ada CI.                  #
+#  #                                                                  #
+#  ####################################################################
+#
+#  Perilaku berkas ini:
+#    - Kalau stack belum ada       -> job dilewati (skip), CI tetap hijau.
+#    - Kalau lint/test ada & lolos -> hijau.
+#    - Kalau lint/test ada & gagal -> MERAH. Ini disengaja. Jangan
+#      melemahkan test supaya hijau (AGENTS.md bagian 6 butir 7).
+#
+#  Yang perlu Anda tambahkan sendiri saat menyesuaikan:
+#    - service database (postgres) untuk test integrasi
+#    - langkah migrasi + seed sebelum test integrasi
+#    - cache dependensi supaya CI cepat
+#    - job build image kalau perlu
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+    branches: ["**"]
+
+# Batalkan run lama pada ref yang sama supaya runner tidak menumpuk.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Deteksi stack. Semua job lain bergantung pada keluaran job ini.
+  # ---------------------------------------------------------------------------
+  detect:
+    name: Deteksi stack
+    runs-on: ubuntu-latest
+    outputs:
+      node: ${{ steps.d.outputs.node }}
+      node_dirs: ${{ steps.d.outputs.node_dirs }}
+      go: ${{ steps.d.outputs.go }}
+      go_dirs: ${{ steps.d.outputs.go_dirs }}
+      python: ${{ steps.d.outputs.python }}
+      python_dirs: ${{ steps.d.outputs.python_dirs }}
+      dotnet: ${{ steps.d.outputs.dotnet }}
+      java: ${{ steps.d.outputs.java }}
+      java_dirs: ${{ steps.d.outputs.java_dirs }}
+      any: ${{ steps.d.outputs.any }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: d
+        name: Cari manifest paket
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Cari manifest sampai kedalaman 3, abaikan direktori artefak.
+          find_manifest() {
+            find . -maxdepth 3 -name "$1" \
+              -not -path "*/node_modules/*" \
+              -not -path "*/.git/*" \
+              -not -path "*/vendor/*" \
+              -not -path "*/dist/*" \
+              -not -path "*/build/*" \
+              -not -path "*/bin/*" \
+              -not -path "*/obj/*" \
+              -not -path "*/.venv/*" \
+              -not -path "*/venv/*" \
+              2>/dev/null | sort || true
+          }
+
+          # Ubah daftar path manifest menjadi daftar direktori, dipisah spasi.
+          dirs_of() {
+            while read -r f; do
+              [ -z "$f" ] && continue
+              dirname "$f"
+            done | sort -u | tr '\n' ' '
+          }
+
+          NODE_DIRS=$(find_manifest package.json | dirs_of)
+          GO_DIRS=$(find_manifest go.mod | dirs_of)
+          PY_DIRS=$(find_manifest requirements.txt | dirs_of)
+          JAVA_DIRS=$(find_manifest pom.xml | dirs_of)
+          CSPROJ=$(find . -maxdepth 4 -name "*.csproj" -not -path "*/.git/*" -not -path "*/bin/*" -not -path "*/obj/*" 2>/dev/null | sort | tr '\n' ' ')
+
+          has() { [ -n "$(echo "$1" | tr -d '[:space:]')" ] && echo true || echo false; }
+
+          NODE=$(has "$NODE_DIRS")
+          GO=$(has "$GO_DIRS")
+          PY=$(has "$PY_DIRS")
+          JAVA=$(has "$JAVA_DIRS")
+          DOTNET=$(has "$CSPROJ")
+
+          ANY=false
+          for v in "$NODE" "$GO" "$PY" "$JAVA" "$DOTNET"; do
+            [ "$v" = "true" ] && ANY=true
+          done
+
+          {
+            echo "node=$NODE"
+            echo "node_dirs=$NODE_DIRS"
+            echo "go=$GO"
+            echo "go_dirs=$GO_DIRS"
+            echo "python=$PY"
+            echo "python_dirs=$PY_DIRS"
+            echo "dotnet=$DOTNET"
+            echo "java=$JAVA"
+            echo "java_dirs=$JAVA_DIRS"
+            echo "any=$ANY"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Hasil deteksi stack"
+            echo ""
+            echo "| Stack | Terdeteksi | Direktori |"
+            echo "|---|---|---|"
+            echo "| Node / npm | $NODE | ${NODE_DIRS:-—} |"
+            echo "| Go | $GO | ${GO_DIRS:-—} |"
+            echo "| Python | $PY | ${PY_DIRS:-—} |"
+            echo "| .NET | $DOTNET | ${CSPROJ:-—} |"
+            echo "| Java / Maven | $JAVA | ${JAVA_DIRS:-—} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$ANY" = "false" ]; then
+            echo "::warning title=Stack belum terdeteksi::Belum ada manifest paket di repo (package.json / go.mod / requirements.txt / *.csproj / pom.xml). Job lint+test dilewati. Ini normal hanya sebelum Sprint 0 selesai — pada tag v1.0.0 kondisi ini berarti CI tidak menguji apa pun."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # 2. Pemeriksaan higienis repo. Berjalan apa pun stack-nya.
+  #    Ini murah, dan kegagalannya menyelamatkan nilai (secret ter-commit = -10).
+  # ---------------------------------------------------------------------------
+  higiene:
+    name: Higiene repo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pastikan tidak ada berkas .env ter-commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          # .env.example WAJIB ada; .env dan turunannya TIDAK BOLEH ter-commit.
+          BAD=$(git ls-files | grep -E '(^|/)\.env($|\.[^e]|\.local$|\.production$)' || true)
+          if [ -n "$BAD" ]; then
+            echo "::error title=Berkas .env ter-commit::$BAD"
+            echo "Brief §7.2 butir 7: tidak ada secret di dalam repo. Secret ter-commit dikenai -10,"
+            echo "termasuk kalau sudah dihapus di commit berikutnya. Hapus dari riwayat, bukan hanya dari HEAD."
+            exit 1
+          fi
+          echo "OK: tidak ada berkas .env ter-commit."
+
+      - name: Pastikan .env.example ada
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f .env.example ]; then
+            echo "::error title=.env.example hilang::Berkas .env.example wajib ada (brief §8.1)."
+            exit 1
+          fi
+          echo "OK: .env.example ada."
+
+      - name: Pastikan artefak wajib repo ada
+        shell: bash
+        run: |
+          set -euo pipefail
+          MISSING=""
+          for f in README.md AGENTS.md docs/AI-DEVLOG.md docs/AI-WORKFLOW.md \
+                   docs/TRACEABILITY.md docs/DEMO-SCRIPT.md docs/SRS-iMitra.md \
+                   docs/SDD-iMitra.md docs/adr/0001-pilihan-stack.md \
+                   fixtures/nasabah-uji.csv docker-compose.yml; do
+            [ -f "$f" ] || MISSING="$MISSING $f"
+          done
+          if [ -n "$MISSING" ]; then
+            # Peringatan, bukan kegagalan: sebagian berkas mungkin belum dibuat di jam pertama.
+            echo "::warning title=Artefak wajib belum ada::$MISSING"
+          else
+            echo "OK: seluruh artefak wajib ada."
+          fi
+
+      - name: Ingatkan placeholder yang belum diisi
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Hitung placeholder "<!-- ISI:" yang masih tersisa. Tidak menggagalkan CI,
+          # tetapi angkanya harus menuju nol menjelang code freeze.
+          COUNT=$(grep -rIl '<!-- ISI:' --include='*.md' . 2>/dev/null | wc -l | tr -d ' ')
+          TOTAL=$(grep -rIo '<!-- ISI:' --include='*.md' . 2>/dev/null | wc -l | tr -d ' ')
+          echo "Berkas dengan placeholder belum diisi: $COUNT (total placeholder: $TOTAL)"
+          if [ "${TOTAL:-0}" -gt 0 ]; then
+            echo "::warning title=Placeholder template belum diisi::$TOTAL placeholder '<!-- ISI: -->' tersisa di $COUNT berkas. Harus nol sebelum tag v1.0.0."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # 3. Node / npm
+  # ---------------------------------------------------------------------------
+  node:
+    name: Lint & test — Node
+    needs: detect
+    if: needs.detect.outputs.node == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # SESUAIKAN: samakan dengan versi di AGENTS.md bagian 2.
+          node-version: '20'
+
+      - name: Install, lint, test
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in ${{ needs.detect.outputs.node_dirs }}; do
+            echo "::group::$d"
+            pushd "$d" > /dev/null
+
+            if [ -f package-lock.json ]; then
+              npm ci
+            else
+              echo "::warning title=Lockfile tidak ada di $d::npm ci butuh package-lock.json. Commit lockfile supaya build reproducible."
+              npm install
+            fi
+
+            # --if-present: skip kalau script tidak ada; TETAP gagal kalau script ada dan merah.
+            npm run lint --if-present
+            npm run test --if-present
+
+            popd > /dev/null
+            echo "::endgroup::"
+          done
+
+  # ---------------------------------------------------------------------------
+  # 4. Go
+  # ---------------------------------------------------------------------------
+  go:
+    name: Lint & test — Go
+    needs: detect
+    if: needs.detect.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          # SESUAIKAN: samakan dengan go.mod.
+          go-version: 'stable'
+
+      - name: Vet, build, test
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in ${{ needs.detect.outputs.go_dirs }}; do
+            echo "::group::$d"
+            pushd "$d" > /dev/null
+
+            gofmt -l . | tee /tmp/gofmt.out
+            if [ -s /tmp/gofmt.out ]; then
+              echo "::error title=gofmt::Berkas di atas belum diformat. Jalankan gofmt -w ."
+              exit 1
+            fi
+
+            go vet ./...
+            go build ./...
+
+            # Gagal kalau ada test dan test-nya merah; hijau kalau memang belum ada test.
+            go test ./...
+
+            popd > /dev/null
+            echo "::endgroup::"
+          done
+
+  # ---------------------------------------------------------------------------
+  # 5. Python
+  # ---------------------------------------------------------------------------
+  python:
+    name: Lint & test — Python
+    needs: detect
+    if: needs.detect.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # SESUAIKAN: samakan dengan versi di AGENTS.md bagian 2.
+          python-version: '3.12'
+
+      - name: Install, lint, test
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in ${{ needs.detect.outputs.python_dirs }}; do
+            echo "::group::$d"
+            pushd "$d" > /dev/null
+
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+
+            # Lint dijalankan hanya kalau linter-nya memang dipasang oleh requirements.
+            if python -c "import ruff" 2>/dev/null || command -v ruff > /dev/null; then
+              ruff check .
+            elif command -v flake8 > /dev/null; then
+              flake8 .
+            else
+              echo "::warning title=Linter Python tidak ada di $d::Tambahkan ruff atau flake8 ke requirements.txt dan sesuaikan berkas ini."
+            fi
+
+            # Jalankan pytest hanya kalau pytest terpasang; kalau tidak ada test, tetap hijau.
+            if command -v pytest > /dev/null; then
+              pytest -q
+            else
+              echo "::warning title=pytest tidak ada di $d::Belum ada test runner. Test dari AC wajib ada sebelum code freeze."
+            fi
+
+            popd > /dev/null
+            echo "::endgroup::"
+          done
+
+  # ---------------------------------------------------------------------------
+  # 6. .NET
+  # ---------------------------------------------------------------------------
+  dotnet:
+    name: Lint & test — .NET
+    needs: detect
+    if: needs.detect.outputs.dotnet == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          # SESUAIKAN: samakan dengan TargetFramework di *.csproj.
+          dotnet-version: '8.0.x'
+
+      - name: Restore, format, build, test
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet restore
+
+          # dotnet format --verify-no-changes gagal kalau format belum rapi.
+          dotnet format --verify-no-changes || {
+            echo "::error title=dotnet format::Format belum rapi. Jalankan dotnet format."
+            exit 1
+          }
+
+          dotnet build --no-restore --configuration Release
+
+          # Tidak menggagalkan CI hanya karena belum ada proyek test.
+          if dotnet test --no-build --configuration Release --list-tests > /dev/null 2>&1; then
+            dotnet test --no-build --configuration Release
+          else
+            echo "::warning title=Belum ada proyek test .NET::Tambahkan proyek test dan sesuaikan berkas ini."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # 7. Java / Maven
+  # ---------------------------------------------------------------------------
+  java:
+    name: Lint & test — Java
+    needs: detect
+    if: needs.detect.outputs.java == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          # SESUAIKAN: samakan dengan pom.xml.
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in ${{ needs.detect.outputs.java_dirs }}; do
+            echo "::group::$d"
+            pushd "$d" > /dev/null
+            # mvn verify menjalankan compile + test. Gagal kalau test merah.
+            mvn -B --no-transfer-progress verify
+            popd > /dev/null
+            echo "::endgroup::"
+          done
+
+  # ---------------------------------------------------------------------------
+  # 8. Gerbang akhir. Ini job yang dipakai sebagai required status check di
+  #    branch protection (Settings > Branches > main), supaya satu nama saja
+  #    yang perlu didaftarkan walaupun job stack berubah-ubah.
+  # ---------------------------------------------------------------------------
+  ci:
+    name: CI
+    needs: [detect, higiene, node, go, python, dotnet, java]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kumpulkan hasil
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "detect  : ${{ needs.detect.result }}"
+          echo "higiene : ${{ needs.higiene.result }}"
+          echo "node    : ${{ needs.node.result }}"
+          echo "go      : ${{ needs.go.result }}"
+          echo "python  : ${{ needs.python.result }}"
+          echo "dotnet  : ${{ needs.dotnet.result }}"
+          echo "java    : ${{ needs.java.result }}"
+
+          # 'skipped' diterima (stack itu tidak dipakai). 'failure' dan 'cancelled' tidak.
+          for r in "${{ needs.detect.result }}" "${{ needs.higiene.result }}" \
+                   "${{ needs.node.result }}" "${{ needs.go.result }}" \
+                   "${{ needs.python.result }}" "${{ needs.dotnet.result }}" \
+                   "${{ needs.java.result }}"; do
+            case "$r" in
+              success|skipped) ;;
+              *) echo "::error title=CI gagal::Ada job yang tidak lolos (status: $r)."; exit 1 ;;
+            esac
+          done
+
+          if [ "${{ needs.detect.outputs.any }}" != "true" ]; then
+            echo "::warning title=CI belum menguji apa pun::Belum ada stack terdeteksi, jadi tidak ada lint/test yang dijalankan. Sesuaikan berkas ini setelah Sprint 0."
+          fi
+
+          echo "CI lolos."

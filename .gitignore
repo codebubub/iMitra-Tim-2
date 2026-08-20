@@ -1,0 +1,226 @@
+# =============================================================================
+#  .gitignore — iMitra
+#  Gabungan Node / Python / Go / .NET / Java + editor + artefak lokal.
+#  Hapus bagian stack yang tidak Anda pakai supaya berkas ini tetap terbaca.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+#  SECRET & KONFIGURASI LOKAL  --  BAGIAN PALING PENTING DI BERKAS INI
+# -----------------------------------------------------------------------------
+#  Brief §7.2 butir 7: tidak ada secret di dalam repo. `.env.example` ya, `.env` tidak.
+#
+#  SECRET TER-COMMIT = PENGURANGAN -10, dan sanksinya tetap berlaku walaupun
+#  secret itu sudah dihapus di commit berikutnya — riwayat git tetap memuatnya
+#  dan penilai memeriksa riwayat, bukan hanya kondisi terakhir.
+#
+#  Kalau secret sudah ter-commit: laporkan ke Tech Lead sekarang, ganti nilainya
+#  (anggap ia sudah bocor), dan jangan berharap `git rm` menyelesaikannya.
+#
+#  Jangan menghapus atau melonggarkan baris-baris di bawah ini.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+secrets.json
+credentials.json
+serviceaccount*.json
+*.tfvars
+
+# -----------------------------------------------------------------------------
+#  Berkas upload nasabah (KTP, KK, Surat Keterangan Usaha, foto survei)
+#  Data pribadi (BR-11). Tidak boleh masuk repo, walaupun berupa data uji.
+# -----------------------------------------------------------------------------
+uploads/
+upload/
+storage/uploads/
+public/uploads/
+media/
+*.jpg
+*.jpeg
+*.png
+*.heic
+!docs/**/*.png
+!docs/**/*.jpg
+# Catatan: pengecualian di atas memperbolehkan gambar diagram di docs/.
+# Pastikan tidak ada foto dokumen nasabah yang diselipkan ke docs/.
+# Kalau frontend Anda memerlukan aset gambar (logo, ikon), tambahkan
+# pengecualian yang SPESIFIK ke direktori aset itu — jangan menghapus
+# pola *.jpg / *.png di atas. Contoh:
+# !frontend/src/assets/**
+# !frontend/public/img/**
+
+# -----------------------------------------------------------------------------
+#  Node / JavaScript / TypeScript
+# -----------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.npm/
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+dist/
+build/
+out/
+.next/
+.nuxt/
+.svelte-kit/
+.vite/
+.turbo/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+.eslintcache
+.parcel-cache/
+
+# -----------------------------------------------------------------------------
+#  Python
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+.eggs/
+pip-log.txt
+.ipynb_checkpoints/
+
+# -----------------------------------------------------------------------------
+#  Go
+# -----------------------------------------------------------------------------
+*.exe
+*.exe~
+*.dll
+*.dylib
+*.test
+*.out
+vendor/
+/bin/
+go.work
+go.work.sum
+
+# -----------------------------------------------------------------------------
+#  .NET / C#
+# -----------------------------------------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.userprefs
+*.cache
+.vs/
+TestResults/
+[Ll]ogs/
+project.lock.json
+artifacts/
+*.nupkg
+
+# -----------------------------------------------------------------------------
+#  Java / Maven / Gradle
+# -----------------------------------------------------------------------------
+target/
+*.class
+*.jar
+*.war
+*.ear
+!**/gradle/wrapper/gradle-wrapper.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+.gradle/
+gradle-app.setting
+hs_err_pid*
+replay_pid*
+.mvn/timing.properties
+
+# -----------------------------------------------------------------------------
+#  Database lokal & dump
+# -----------------------------------------------------------------------------
+#  Skema WAJIB dibangun dari migrasi, bukan dari dump yang di-restore manual
+#  (brief §7.2 butir 4). Dump tidak perlu masuk repo.
+*.sqlite
+*.sqlite3
+*.db
+*.sql.gz
+dump.sql
+backup*.sql
+pgdata/
+postgres-data/
+mysql-data/
+
+# -----------------------------------------------------------------------------
+#  Log & artefak runtime
+# -----------------------------------------------------------------------------
+*.log
+logs/
+tmp/
+temp/
+.cache/
+pids/
+*.pid
+*.seed
+
+# -----------------------------------------------------------------------------
+#  Editor & IDE
+# -----------------------------------------------------------------------------
+.vscode/*
+!.vscode/settings.json.example
+!.vscode/extensions.json
+.idea/
+*.iml
+*.ipr
+*.iws
+.fleet/
+*.swp
+*.swo
+*~
+.history/
+*.code-workspace
+
+# -----------------------------------------------------------------------------
+#  Sistem operasi
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# -----------------------------------------------------------------------------
+#  Artefak tool AI & catatan pribadi
+# -----------------------------------------------------------------------------
+#  Catatan: AGENTS.md, CLAUDE.md, dan berkas aturan agent lainnya WAJIB
+#  di-commit — jangan pernah menambahkannya ke daftar ini.
+#  Yang diabaikan hanyalah cache/sesi lokal tool.
+.aider*
+.claude/
+.cursor/cache/
+.continue/
+.copilot/
+*.local.md
+catatan-pribadi*.md
