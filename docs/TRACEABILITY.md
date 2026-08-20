@@ -78,7 +78,7 @@ masih stub. Di antara mereka ada **enam AC**: AC-05, AC-06, AC-07, AC-08, AC-09,
 | **Ray** | S-03, 05, 06, 07 + FR-11 UI | **5 layar dari 5**, 1.953 baris | Belum tersambung ke `main` | `feat/FR-02-buat-pengajuan`, 3 commit, **sudah di-rebase** |
 | **Alfian** | FR-05, 06, 07, 13 + mock SLIK | mock SLIK (klien) | **4 FR — keempatnya masih stub** | `alfian`, 1 commit — **isinya frontend, bukan FR miliknya** |
 | **Reffa** | Fondasi UI, S-01, 02, 04, 12, QA | — | Semuanya | `reffa`, 0 commit |
-| **Eka** | S-08…11, 13, 14 + AI Workflow | **6 layar dari 6** + 5 modul `api/` | Belum tersambung ke `main`; tidak ada test layar | `eka`, 1 commit |
+| **Eka** | S-08…11, 13, 14 + AI Workflow | **6 layar dari 6** + 5 modul `api/` + **29 test lapisan api** | Belum tersambung ke `main`; belum ada test render komponen | `eka`, 2 commit |
 
 ---
 

@@ -268,17 +268,46 @@ yang bisa diulang orang lain.
   "apakah nilai ini masih dapat dipakai untuk tujuannya". Kalau tidak, frontend
   memang tidak boleh memilikinya, dan alurnya harus berubah — bukan tipenya.
 
-### [DEVLOG-03] `<!-- ISI: judul -->` (FR-`<!-- ISI -->`)
-- **Waktu**:
-- **Oleh**:
-- **Tool/Model**:
-- **Tugas**:
-- **Cara memberi konteks**:
-- **Keluaran AI**:
-- **Yang salah**:
-- **Cara verifikasi**:
-- **Tindakan**:
-- **Pelajaran**:
+### [DEVLOG-03] Test lapisan api/ untuk layar analis/approver/admin (FR-05/06/07/08/13) — kasus AI salah
+- **Waktu**: 2026-08-20 22:10
+- **Oleh**: Eka
+- **Tool/Model**: 9Router → Claude Opus (mode agent dengan akses tulis ke repo)
+- **Tugas**: Menulis test untuk lapisan `src/api/{slik,skoring,margin,approval,parameter}.ts`
+  dan `client.ts`, karena frontend belum punya satu pun test dan Definition of
+  Done (AGENTS.md bagian 7) mensyaratkan minimal satu test dari AC terkait.
+  Batasan yang saya berikan: JANGAN pasang dependensi baru tanpa persetujuan
+  (larangan #1), jadi test render komponen (butuh @testing-library/react + jsdom)
+  ditunda; yang dikerjakan test lapisan api dengan fetch + localStorage di-stub.
+- **Cara memberi konteks**: melampirkan `client.ts` (perilaku header auth &
+  penerusan galat), keenam modul api, dan daftar AC/BR yang harus ditegakkan —
+  terutama BR-11 (NIK tidak di URL), BR-06 (tanpa jalur "paksa"), BR-07/08
+  (desimal tak dibulatkan), dan AC-04/AC-09 (field `rule` diteruskan).
+- **Keluaran AI**: 6 berkas spec + 1 bantuan-uji, 29 test. `vitest run` hijau
+  pada percobaan pertama — 29 lolos.
+- **Yang salah**: "hijau" itu menipu. `vitest` lolos, tetapi `tsc --noEmit`
+  **gagal dengan 8 error**. Dua akar: (1) `afterEach(() => vi.unstubAllGlobals())`
+  — bentuk arrow tanpa kurung mengembalikan nilai `VitestUtils`, sedangkan
+  `afterEach` mengharapkan `void`; Vitest tetap menjalankannya, tetapi kontrak
+  tipenya salah. (2) stub `Response` di-cast `as Response` padahal objeknya tidak
+  cukup mirip — TS menolaknya, butuh `as unknown as Response`. Kalau berhenti di
+  "vitest hijau", berkas test ini akan menggagalkan `npm run build` (yang
+  menjalankan `tsc -b`) di CI — test yang justru merusak build.
+- **Cara verifikasi**: (a) menjalankan `tsc --noEmit`, `eslint`, dan `vite build`
+  SELAIN `vitest` — bukan hanya test runner. (b) yang lebih penting: menguji
+  bahwa test-nya benar-benar menangkap regresi, dengan menyabotase kode sumber
+  sementara. Mengirim NIK di URL membuat test BR-11 gagal tepat; menghapus
+  `rule: body.rule` di client.ts membuat dua test AC-04/AC-09 gagal tepat.
+  Keduanya pulih setelah kode dikembalikan. Test yang tidak bisa gagal tidak
+  membuktikan apa pun.
+- **Tindakan**: memperbaiki kedelapan error tipe (afterEach dibungkus blok,
+  cast `as unknown as Response`), lalu menjalankan ulang keempat gerbang sampai
+  semuanya exit 0: tsc bersih, eslint bersih, vite build hijau, 29 test lolos.
+- **Pelajaran**: "test lolos" dan "test benar" adalah dua hal berbeda, dan
+  keduanya berbeda lagi dari "test tidak merusak build". Test runner memakai
+  transpilasi (esbuild) yang MENGABAIKAN error tipe; hanya `tsc` yang
+  menegakkannya. Definition of Done untuk berkas test bukan "vitest hijau"
+  melainkan keempat gerbang hijau DAN test terbukti gagal saat kodenya salah.
+  Sabotase terkontrol adalah cara termurah membuktikan yang terakhir.
 
 ### [DEVLOG-04] `<!-- ISI: judul -->` (FR-`<!-- ISI -->`)
 - **Waktu**:
