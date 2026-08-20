@@ -213,7 +213,7 @@ Rancangan lengkap — model data, 32 endpoint, keamanan, deployment — ada di
 
 | FR | Requirement | Prioritas | Status | PR |
 |---|---|---|---|---|
-| FR-01 | Autentikasi & Otorisasi Berbasis Peran | P0 |  |  |
+| FR-01 | Autentikasi & Otorisasi Berbasis Peran | P0 | Selesai & teruji |  |
 | FR-02 | Pengajuan Pembiayaan Mikro | P0 |  |  |
 | FR-03 | Upload & Verifikasi Dokumen | P0 |  |  |
 | FR-04 | Survei Lapangan (OTS) | P0 |  |  |
@@ -221,14 +221,14 @@ Rancangan lengkap — model data, 32 endpoint, keamanan, deployment — ada di
 | FR-06 | Skoring Kelayakan Mikro | P0 |  |  |
 | FR-07 | Perhitungan Margin / Nisbah | P0 |  |  |
 | FR-08 | Approval Berjenjang | P0 |  |  |
-| FR-09 | Audit Trail | P0 |  |  |
+| FR-09 | Audit Trail | P0 | Selesai & teruji |  |
 
 ### P1 — SEHARUSNYA (nilai penuh butuh ini)
 
 | FR | Requirement | Prioritas | Status | PR |
 |---|---|---|---|---|
 | FR-10 | Pembiayaan Kelompok (Majelis) | P1 |  |  |
-| FR-11 | Notifikasi Perubahan Status | P1 |  |  |
+| FR-11 | Notifikasi Perubahan Status | P1 | Sebagian |  |
 | FR-12 | Dashboard Pipeline | P1 |  |  |
 | FR-13 | Parameter Terkonfigurasi | P1 |  |  |
 
@@ -269,7 +269,7 @@ Penelusuran rinci FR → endpoint → test → PR ada di [`docs/TRACEABILITY.md`
 
 | FR / Bagian | Keputusan | Apa yang jalan | Apa yang tidak | Alasan | Diputuskan kapan |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
+| FR-11 Notifikasi | Sebagian | Sisi backend: baris notifikasi ditulis di dalam transaksi yang sama dengan perubahan status, `GET /api/notifikasi` dan `POST /api/notifikasi/{id}/baca` jalan dan teruji, kepemilikan ditegakkan di server | Layar notifikasi di frontend (S-xx, milik Ray) | Backend-nya prasyarat layarnya, jadi ia dikerjakan lebih dulu supaya frontend tidak menunggu kontrak yang belum ada (risiko R-3). Sisanya menyusul di PR frontend | 2026-08-20, bersama FR-01/FR-09 |
 |  |  |  |  |  |  |
 |  |  |  |  |  |  |
 

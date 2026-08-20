@@ -43,7 +43,7 @@ atau `Done (tanpa test)` dan jelaskan di `README.md` bagian 5.
 
 | FR | Judul | Prioritas | AC terkait | Endpoint | File test | PR | Status |
 |---|---|---|---|---|---|---|---|
-| FR-01 | Autentikasi & Otorisasi Berbasis Peran | P0 | AC-01, AC-02 |  |  |  |  |
+| FR-01 | Autentikasi & Otorisasi Berbasis Peran | P0 | AC-01, AC-02 | `POST /api/auth/login` · `GET /api/auth/me` · `GET/POST /api/pengguna` · `PATCH /api/pengguna/{id}` | `backend/tests/integration/rbac.spec.ts` · `backend/tests/integration/pengguna.spec.ts` |  | Done |
 | FR-02 | Pengajuan Pembiayaan Mikro | P0 | AC-01 |  |  |  |  |
 | FR-03 | Upload & Verifikasi Dokumen | P0 | AC-03 |  |  |  |  |
 | FR-04 | Survei Lapangan (OTS) | P0 | AC-04 |  |  |  |  |
@@ -51,9 +51,9 @@ atau `Done (tanpa test)` dan jelaskan di `README.md` bagian 5.
 | FR-06 | Skoring Kelayakan Mikro | P0 | AC-06, AC-07, AC-08 |  |  |  |  |
 | FR-07 | Perhitungan Margin / Nisbah | P0 | AC-09 |  |  |  |  |
 | FR-08 | Approval Berjenjang | P0 | AC-10, AC-11 |  |  |  |  |
-| FR-09 | Audit Trail | P0 | AC-08, AC-12, AC-13 |  |  |  |  |
+| FR-09 | Audit Trail | P0 | AC-08, AC-12, AC-13 | `GET /api/pengajuan/{id}/audit` · `GET /api/audit` | `backend/tests/integration/audit.spec.ts` · `backend/tests/integration/audit-readonly.spec.ts` |  | Done |
 | FR-10 | Pembiayaan Kelompok (Majelis) | P1 | AC-14 |  |  |  |  |
-| FR-11 | Notifikasi Perubahan Status | P1 | — |  |  |  |  |
+| FR-11 | Notifikasi Perubahan Status | P1 | — | `GET /api/notifikasi` · `POST /api/notifikasi/{id}/baca` | `backend/tests/integration/notifikasi.spec.ts` |  | Done (backend) |
 | FR-12 | Dashboard Pipeline | P1 | — |  |  |  |  |
 | FR-13 | Parameter Terkonfigurasi | P1 | AC-15 |  |  |  |  |
 | FR-14 | Simulasi angsuran murabahah & proyeksi bagi hasil musyarakah | P2 | — |  |  |  |  |
