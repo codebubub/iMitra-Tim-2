@@ -1,0 +1,310 @@
+/*
+ * Design system iMitra.
+ *
+ * PEMILIK: Frontend Lead (Reffa). Berkas ini dan src/components/ hanya disentuh
+ * satu orang — kalau tiga orang boleh menambah token, dalam sehari akan ada tiga
+ * warna primer yang sedikit berbeda.
+ *
+ * Nilainya SAMA PERSIS dengan blok Design System di docs/UIUX-STITCH.md bagian 2.
+ * Kalau salah satunya berubah, ubah keduanya di PR yang sama.
+ *
+ * Nada: tenang, padat, institusional. Ini alat back-office perbankan yang
+ * dipakai berjam-jam, bukan aplikasi konsumen. Tanpa gradien, tanpa ilustrasi.
+ */
+
+:root {
+  /* Warna */
+  --warna-primer: #0f6b5c;
+  --warna-primer-hover: #0b564a;
+  --warna-aksen: #c08a2e;
+
+  --warna-latar: #f7f8f7;
+  --warna-permukaan: #ffffff;
+  --warna-garis: #e3e6e4;
+
+  --teks-utama: #16211e;
+  --teks-sekunder: #5a6763;
+  --teks-redup: #8a948f;
+
+  --warna-sukses: #1f7a46;
+  --warna-peringatan: #b4700f;
+  --warna-bahaya: #b3261e;
+  --warna-info: #1b5e9e;
+
+  /* Latar badge: warna semantik yang ditipiskan, bukan isian penuh */
+  --bg-sukses: #e8f4ed;
+  --bg-peringatan: #fbf1e2;
+  --bg-bahaya: #fbeae9;
+  --bg-info: #e8f0f8;
+  --bg-netral: #eef0ef;
+
+  /* Tipografi */
+  --font: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif;
+  /* Angka rupiah dan skor WAJIB tabular supaya kolom tabel sejajar */
+  --font-angka: 'Plus Jakarta Sans', ui-monospace, monospace;
+
+  /* Skala 8px */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  --radius-kartu: 8px;
+  --radius-tombol: 6px;
+  --radius-badge: 999px;
+
+  --lebar-sidebar: 240px;
+  --tinggi-topbar: 56px;
+  --lebar-konten-maks: 1200px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--teks-utama);
+  background: var(--warna-latar);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  margin: 0;
+}
+h2 {
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  margin: 0;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--teks-sekunder);
+  margin-bottom: var(--sp-1);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 10px var(--sp-3);
+  font: inherit;
+  color: var(--teks-utama);
+  background: var(--warna-permukaan);
+  border: 1px solid var(--warna-garis);
+  border-radius: var(--radius-kartu);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--warna-primer);
+  outline-offset: 2px;
+}
+
+/* Komponen dasar ------------------------------------------------------- */
+
+.kartu {
+  background: var(--warna-permukaan);
+  border: 1px solid var(--warna-garis);
+  border-radius: var(--radius-kartu);
+  padding: var(--sp-5);
+  /* Sengaja tanpa shadow: garis 1px lebih tenang dan lebih padat */
+}
+
+.tombol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: 10px var(--sp-4);
+  font: inherit;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--radius-tombol);
+  cursor: pointer;
+  background: var(--warna-primer);
+  color: #fff;
+}
+.tombol:hover:not(:disabled) {
+  background: var(--warna-primer-hover);
+}
+.tombol:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.tombol--sekunder {
+  background: transparent;
+  color: var(--teks-utama);
+  border-color: var(--warna-garis);
+}
+.tombol--bahaya {
+  background: transparent;
+  color: var(--warna-bahaya);
+  border-color: var(--warna-bahaya);
+}
+
+/*
+ * Badge status. SELALU memuat teks — status tidak pernah disampaikan hanya
+ * lewat warna. Nilai kelasnya diturunkan dari 15 enum status backend.
+ */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+  border-radius: var(--radius-badge);
+  background: var(--bg-netral);
+  color: var(--teks-sekunder);
+  white-space: nowrap;
+}
+.badge--info {
+  background: var(--bg-info);
+  color: var(--warna-info);
+}
+.badge--sukses {
+  background: var(--bg-sukses);
+  color: var(--warna-sukses);
+}
+.badge--peringatan {
+  background: var(--bg-peringatan);
+  color: var(--warna-peringatan);
+}
+.badge--bahaya {
+  background: var(--bg-bahaya);
+  color: var(--warna-bahaya);
+}
+
+/*
+ * Panel pelanggaran aturan bisnis. Kalimat yang bisa dipahami pengguna, plus
+ * badge kecil berisi kode BR di sampingnya — kodenya untuk penilai dan pelaporan
+ * bug, kalimatnya untuk pengguna.
+ */
+.panel-galat {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-bahaya);
+  border: 1px solid var(--warna-bahaya);
+  border-radius: var(--radius-kartu);
+  color: var(--warna-bahaya);
+}
+.panel-galat__kode {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.tabel {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--warna-permukaan);
+}
+.tabel th,
+.tabel td {
+  padding: var(--sp-3) var(--sp-4);
+  text-align: left;
+  border-bottom: 1px solid var(--warna-garis);
+}
+.tabel th {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--teks-sekunder);
+  background: var(--warna-latar);
+}
+/* Rupiah dan skor rata kanan dengan angka tabular */
+.tabel .angka,
+.angka {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-angka);
+}
+.mono {
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+}
+
+.redup {
+  color: var(--teks-redup);
+}
+
+/* Tata letak aplikasi --------------------------------------------------- */
+
+.layout {
+  display: grid;
+  grid-template-columns: var(--lebar-sidebar) 1fr;
+  min-height: 100vh;
+}
+.sidebar {
+  background: var(--warna-permukaan);
+  border-right: 1px solid var(--warna-garis);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+}
+.sidebar a {
+  display: block;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-tombol);
+  color: var(--teks-sekunder);
+  text-decoration: none;
+  font-weight: 500;
+}
+.sidebar a.aktif {
+  background: var(--bg-info);
+  color: var(--warna-primer);
+}
+.konten {
+  padding: var(--sp-5);
+  max-width: var(--lebar-konten-maks);
+  width: 100%;
+}
+
+/*
+ * AO bekerja di lapangan dengan layar ponsel (NFR-08). Di bawah 720px sidebar
+ * dilipat menjadi bar atas, dan konten menjadi satu kolom tanpa scroll
+ * horizontal.
+ */
+@media (max-width: 720px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--warna-garis);
+  }
+  .konten {
+    padding: var(--sp-4);
+  }
+}
