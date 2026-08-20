@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma.js'
+import { ambilUntukAutentikasi } from '../repositories/pengguna.repo.js'
 import { env } from '../config/env.js'
 import { TidakTerautentikasi } from '../lib/errors.js'
 import { buatToken, type PenggunaToken } from '../middleware/rbac.js'
@@ -26,7 +27,7 @@ export interface PenyediaIdentitas {
 
 export class PenyediaIdentitasLokal implements PenyediaIdentitas {
   async autentikasi(username: string, password: string): Promise<ProfilPengguna | null> {
-    const pengguna = await prisma.pengguna.findUnique({ where: { username } })
+    const pengguna = await ambilUntukAutentikasi(username)
     if (!pengguna || !pengguna.aktif) {
       // Tetap jalankan hash pembanding supaya waktu respons untuk "user tidak
       // ada" dan "password salah" tidak berbeda secara mencolok.
