@@ -26,6 +26,13 @@ export async function buatApp(): Promise<FastifyInstance> {
   // Kumpulkan seluruh route yang didaftarkan. Dipakai dua hal:
   //   1. pastikanSemuaRouteBerperan() — fail-closed saat start
   //   2. GET /api/_routes — bukti AC-13
+  //
+  // Dikosongkan lebih dulu karena daftarnya milik modul, bukan milik instance.
+  // Test integrasi memanggil buatApp() lebih dari sekali dalam satu proses; tanpa
+  // ini daftar route tumbuh berlipat setiap pemanggilan dan /api/_routes
+  // menampilkan route yang sama berkali-kali.
+  daftarRoute.length = 0
+
   app.addHook('onRoute', (opsi) => {
     const methods = Array.isArray(opsi.method) ? opsi.method : [opsi.method]
     for (const m of methods) {

@@ -61,11 +61,13 @@ module.exports = {
   overrides: [
     {
       // Berkas yang memang bertugas menyentuh Prisma dan env.
-      files: ['src/lib/prisma.ts', 'src/repositories/**/*.ts', 'prisma/seed.ts', 'src/services/**/*.ts'],
+      files: ['src/lib/prisma.ts', 'src/repositories/**/*.ts', 'prisma/**/*.ts', 'src/services/**/*.ts'],
       rules: { 'no-restricted-imports': 'off' },
     },
     {
-      files: ['prisma/seed.ts'],
+      // Skrip seed memang berbicara ke terminal: keluarannya adalah satu-satunya
+      // cara penilai melihat apa yang tertanam saat `docker compose up`.
+      files: ['prisma/**/*.ts'],
       rules: { 'no-console': 'off' },
     },
     {
