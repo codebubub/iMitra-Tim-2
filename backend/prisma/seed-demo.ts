@@ -451,14 +451,37 @@ export async function seedDemo(): Promise<void> {
         { nik: '3404190883000005', plafon: 60_000_000, kolektibilitas: 1 },
         { nik: '3404060586000010', plafon: 60_000_000, kolektibilitas: 1 },
         { nik: '3404150688000003', plafon: 60_000_000, kolektibilitas: 2 },
-        { nik: '3404300394000009', plafon: 60_000_000, kolektibilitas: 2 },
+        // Siti Aminah bisa dipakai lagi di sini karena pengajuannya di 9001
+        // sudah APPROVED — status terminal, jadi tidak lagi terhitung aktif
+        // menurut asumsi A-6.
+        { nik: '3404110985000001', plafon: 60_000_000, kolektibilitas: 1 },
       ],
       survei: { omzetHarian: 2_000_000, lamaUsahaBulan: 36, kondisiUsahaSkala: 4 },
       statusAkhir: 'MENUNGGU_APPROVAL_L1',
       marginPersen: 19.5,
       catatanAnalis:
-        'Dua anggota berkolektibilitas 2. Grade dilantai di 3 sesuai Tabel 4.2; kelompok tetap layak karena tanggung renteng.',
+        'Satu anggota berkolektibilitas 2. Grade dilantai di 3 sesuai Tabel 4.2; kelompok tetap layak karena tanggung renteng.',
       untukAC: 'AC-14',
+    },
+    {
+      // AC-06: kolektibilitas 2 boleh lanjut, TETAPI grade tidak pernah lebih
+      // baik dari 3.
+      //
+      // Angkanya dipilih supaya lantai itu BENAR-BENAR TERLIHAT: skor 85 jatuh
+      // di rentang grade 1, lalu dipaksa turun ke grade 3 oleh Tabel 4.2.
+      // Tanpa kasus seperti ini, AC-06 hanya bisa "ditunjukkan" pada pengajuan
+      // yang grade mentahnya memang sudah 3 atau lebih buruk — dan itu tidak
+      // membuktikan apa pun.
+      urutan: 9005,
+      jenisNasabah: 'PERORANGAN',
+      akad: 'MURABAHAH',
+      tenorBulan: 24,
+      anggota: [{ nik: '3404300394000009', plafon: 20_000_000, kolektibilitas: 2 }],
+      survei: { omzetHarian: 500_000, lamaUsahaBulan: 36, kondisiUsahaSkala: 5 },
+      statusAkhir: 'SKORED',
+      catatanAnalis:
+        'Kolektibilitas 2: grade sistem 1 diturunkan menjadi 3 sesuai Tabel 4.2. Usaha berjalan 36 bulan dengan kondisi sangat baik, arus kas mencukupi.',
+      untukAC: 'AC-06',
     },
   ]
 
