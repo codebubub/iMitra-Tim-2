@@ -467,13 +467,34 @@ Tiga lapis, dan yang ketiga adalah yang benar-benar mengikat:
    — penulisan hanya terjadi di dalam service, tidak pernah dari luar.
 2. **Tidak ada method repository.** `repositories/audit.repo.ts` hanya mengekspor `tulis()`
    dan `cari()`. Tidak ada `ubah()` maupun `hapus()` untuk dipanggil siapa pun.
-3. **Hak database dicabut.** Migrasi terakhir menjalankan
-   `REVOKE UPDATE, DELETE ON audit_trail FROM imitra_app;`. Walaupun ada kode yang mencoba,
-   PostgreSQL menolaknya.
+3. **Database yang menolak.** Migrasi `20260820134500_audit_append_only_trigger` memasang
+   trigger `BEFORE UPDATE OR DELETE` pada `audit_trail` yang selalu melempar exception.
+   Walaupun ada kode yang mencoba — kode kami besok, psql, atau Prisma Studio — PostgreSQL
+   menolaknya. `INSERT` tetap diizinkan: audit ditulis, hanya tidak boleh diubah.
 
-**Cara membuktikannya saat AC-13**: `GET /api/_routes` mencetak seluruh route terdaftar
-beserta method-nya (aktif hanya bila `APP_ENV != production`); penilai bisa membaca sendiri
-bahwa tidak ada method tulis untuk audit. Ini bukti dari daftar route, bukan dari kata-kata.
+   > **Catatan koreksi.** Lapis ini semula hanya
+   > `REVOKE UPDATE, DELETE ON audit_trail FROM imitra_app;` (migrasi `20260820121532`,
+   > yang tetap dipertahankan sebagai pertahanan berlapis untuk peran non-pemilik).
+   > REVOKE itu **tidak berpengaruh**, karena `imitra_app` adalah PEMILIK tabel — ia yang
+   > menjalankan migrasi — dan pemilik punya hak implisit yang tidak bisa dicabut REVOKE.
+   > Di compose maupun di CI, lapis ke-3 karena itu tidak berfungsi sama sekali sampai
+   > trigger dipasang. Lihat `AGENTS.md` bagian 6 butir 16.
+
+**Cara membuktikannya saat AC-13**, dua-duanya sekaligus:
+
+- `GET /api/_routes` mencetak seluruh route terdaftar beserta method-nya (aktif hanya bila
+  `APP_ENV != production`); penilai bisa membaca sendiri bahwa tidak ada method tulis untuk
+  audit. Ini bukti dari daftar route, bukan dari kata-kata.
+- `backend/tests/integration/audit-readonly.spec.ts` menembak database secara langsung —
+  `UPDATE` dan `DELETE` atas `audit_trail` ditolak, `INSERT` lolos, dan baris yang sudah
+  ditulis masih utuh sesudahnya. Penjagaan di database wajib punya test yang benar-benar
+  menembak database; membaca kodenya saja tidak membuktikan apa pun (itulah sebabnya lubang
+  REVOKE di atas sempat lolos review).
+
+**Konsekuensi yang perlu diketahui sebelum menulis test**: menghapus baris `pengajuan` yang
+sudah punya audit akan gagal, karena PostgreSQL harus meng-`UPDATE` `audit_trail.pengajuan_id`
+menjadi NULL lebih dulu. Bersihkan data uji dengan `prisma migrate reset`, bukan dengan
+menghapus baris pengajuan.
 
 ---
 
@@ -657,7 +678,7 @@ tidak pernah disampaikan hanya lewat warna — setiap badge status memuat teks.
 | Pemisahan maker/checker (BR-09) | `domain/approval.ts#bukanMaker` membandingkan `pengajuan.dibuat_oleh` dengan aktor, dipanggil sebelum penyimpanan. Akun seed khusus disiapkan untuk mendemokannya | AC-11 |
 | Perlindungan data pribadi (BR-11) | Logger memakai daftar redaksi (`nik`, `nama`, `path_berkas`, `foto_path`, `authorization`) yang diterapkan di serializer, bukan di pemanggil — sehingga tidak bisa dilewatkan karena lupa. Tidak ada route yang menerima NIK sebagai path/query param. Berkas diakses lewat id dokumen | NFR-03: `redaksi.spec.ts` + `docker compose logs backend` dicocokkan terhadap 12 NIK fixtures |
 | Akses berkas upload | `/api/dokumen/{id}/berkas` memeriksa token dan kepemilikan sebelum menyajikan berkas dari volume. Volume **tidak** disajikan sebagai direktori statis oleh nginx | Test: unduh tanpa token → 401; sebagai AO lain → 403 |
-| Audit trail append-only | Tiga lapis: tanpa route tulis, tanpa method repository, `REVOKE UPDATE, DELETE` di database | AC-13 lewat `GET /api/_routes` |
+| Audit trail append-only | Tiga lapis: tanpa route tulis, tanpa method repository, trigger `BEFORE UPDATE OR DELETE` di database | AC-13 lewat `GET /api/_routes` **dan** `tests/integration/audit-readonly.spec.ts` |
 | Manajemen secret | Hanya `.env.example` berisi placeholder; `.env` ada di `.gitignore`; nilai dibaca `config/env.ts` yang memvalidasi keberadaannya saat start dan **gagal cepat** bila `JWT_SECRET` kosong | Job `higiene` di CI pada setiap push; `git log` diperiksa penilai |
 | Validasi input | Zod di batas route untuk **setiap** endpoint; tipe hasil parsing yang dipakai service, bukan `req.body` mentah | Lint melarang akses `req.body` di luar berkas route |
 | Batas unggahan | Maks 5 MB, MIME dalam daftar putih, nama berkas dibangkitkan UUID (nama asli tidak dipakai) | Test unggah 6 MB → 400; unggah `.exe` → 400 |
