@@ -216,17 +216,57 @@ yang bisa diulang orang lain.
   bukan menunggu runtime. Kontrak dibekukan Kamis 13.00; setiap perubahan bentuk
   respons harus diumumkan dan SDD BAB 5 diperbarui di PR yang sama.
 
-### [DEVLOG-02] `<!-- ISI: judul -->` (FR-`<!-- ISI -->`)
-- **Waktu**:
-- **Oleh**:
-- **Tool/Model**:
-- **Tugas**:
-- **Cara memberi konteks**:
-- **Keluaran AI**:
-- **Yang salah**:
-- **Cara verifikasi**:
-- **Tindakan**:
-- **Pelajaran**:
+### [DEVLOG-02] Layar analis/approver/admin disambungkan ke API nyata (FR-05/06/07/08/13) — kasus AI salah
+- **Waktu**: 2026-08-20 21:40
+- **Oleh**: Eka
+- **Tool/Model**: 9Router → Claude Opus (mode agent dengan akses tulis ke repo)
+- **Tugas**: Mengisi keenam layar milik saya yang sebelumnya masih rangka 11 baris
+  (S-08 SLIK, S-09 Skoring, S-10 Margin, S-11 Antrian Approval, S-13 Parameter,
+  S-14 Kelola Pengguna) beserta modul `src/api/{slik,skoring,margin,approval,parameter}.ts`.
+  Route-nya sudah didaftarkan Reffa di `App.tsx`, jadi tugasnya mengisi isi
+  layar, bukan menambah route.
+- **Cara memberi konteks**: melampirkan AGENTS.md **lengkap** (bukan ringkasan),
+  spesifikasi S-08…S-14 dari UIUX-STITCH.md, SDD BAB 4.1 (model data) dan BAB 5
+  (kontrak endpoint), serta `docs/PEMBAGIAN-TIM.md` untuk batas modul. Batasan
+  yang saya sebutkan eksplisit: BR-06 tanpa jalur "lanjutkan saja", BR-07/BR-08
+  rincian 3 desimal, BR-11 NIK tidak boleh utuh, larangan #3 (tanpa konstanta
+  angka bisnis), dan R-2 (`theme.css` + `components/` hanya milik Reffa).
+- **Keluaran AI**: 5 modul API + 6 layar. `tsc --noEmit` dan `eslint` bersih,
+  `vite build` hijau pada percobaan kedua (percobaan pertama satu peringatan
+  `react-hooks/exhaustive-deps` di Parameter.tsx, diperbaiki dengan `useMemo`).
+- **Yang salah**: dua pelanggaran yang lolos dari build hijau.
+  **(1)** Keluaran pertama S-08 memakai empat kelas CSS baru (`.rincian-slik`,
+  `.panel-peringatan`, `.kisi-kartu`, `.pengungkap`) yang tidak ada di
+  `theme.css`. Layar tetap ter-build dan lint tetap bersih — CSS yang tidak ada
+  hanya menghasilkan elemen tanpa gaya, bukan galat. Ini melanggar R-2: kelas
+  bersama hanya milik Reffa.
+  **(2)** Yang lebih berbahaya: tombol "Jalankan SLIK" mengirim `a.nikTersamar`
+  ke `POST /slik-check`. NIK bertopeng (`3404********0001`) panjangnya tetap 16
+  karakter sehingga **lolos** `z.string().length(16)` di route, lalu mock SLIK
+  menjawab `NIK_NOT_FOUND`. Hasilnya: layar menampilkan "Layanan SLIK gagal"
+  padahal yang salah adalah datanya sendiri — kegagalan palsu yang akan terlihat
+  seperti bug backend Alfian saat demo.
+- **Cara verifikasi**: menjalankan `grep -nE` terhadap keenam layar untuk empat
+  hal secara terpisah: angka bisnis literal (11.0/13.0/50000000/bobot 35), kata
+  yang menandakan jalur BR-06 ("lanjutkan saja", "pengecualian", "paksa"),
+  pemakaian `.nik` selain `nikTersamar`, dan kata "hapus/delete" di S-14. Lalu
+  membaca `routes/slik.ts` + `routes/parameter.ts` + `routes/skoring.ts` baris
+  demi baris untuk mencocokkan bentuk respons — bukan mengandalkan build.
+  Dari pembacaan itulah lima temuan kontrak (T-1…T-5) muncul.
+- **Tindakan**: (1) keempat kelas CSS diganti objek gaya lokal di dalam berkas
+  layar, memakai token yang sudah ada — tanpa menyentuh `theme.css`. (2) Kolom
+  input NIK 16 digit ditambahkan ke kartu S-08; ANL mengetik ulang dari dokumen,
+  nilainya dibuang dari state setelah panggilan berhasil, dan tombol nonaktif
+  sampai `/^\d{16}$/` terpenuhi. (3) Lima temuan kontrak dicatat sebagai bagian
+  3.1 di `TRACEABILITY.md` dan diteruskan ke Alfian, **tanpa** menambal dengan
+  data tiruan di frontend.
+- **Pelajaran**: validasi panjang string bukan validasi isi. Data yang sudah
+  disamarkan untuk melindungi privasi (BR-11) sering tetap memenuhi batasan
+  bentuk, sehingga ia lolos zod, lolos typecheck, lolos build — dan gagal hanya
+  di runtime, dengan pesan yang menuduh komponen lain. Untuk setiap field yang
+  ditopengi server, pertanyaannya bukan "apakah tipenya cocok" melainkan
+  "apakah nilai ini masih dapat dipakai untuk tujuannya". Kalau tidak, frontend
+  memang tidak boleh memilikinya, dan alurnya harus berubah — bukan tipenya.
 
 ### [DEVLOG-03] `<!-- ISI: judul -->` (FR-`<!-- ISI -->`)
 - **Waktu**:

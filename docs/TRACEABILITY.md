@@ -78,7 +78,29 @@ masih stub. Di antara mereka ada **enam AC**: AC-05, AC-06, AC-07, AC-08, AC-09,
 | **Ray** | S-03, 05, 06, 07 + FR-11 UI | **5 layar dari 5**, 1.953 baris | Belum tersambung ke `main` | `feat/FR-02-buat-pengajuan`, 3 commit, **sudah di-rebase** |
 | **Alfian** | FR-05, 06, 07, 13 + mock SLIK | mock SLIK (klien) | **4 FR — keempatnya masih stub** | `alfian`, 1 commit — **isinya frontend, bukan FR miliknya** |
 | **Reffa** | Fondasi UI, S-01, 02, 04, 12, QA | — | Semuanya | `reffa`, 0 commit |
-| **Eka** | S-08…11, 13, 14 + AI Workflow | — | Semuanya | `eka`, 0 commit |
+| **Eka** | S-08…11, 13, 14 + AI Workflow | **6 layar dari 6** + 5 modul `api/` | Belum tersambung ke `main`; tidak ada test layar | `eka`, 1 commit |
+
+---
+
+## 3.1 Temuan kontrak dari sisi frontend (Eka, layar S-08…S-14)
+
+Ditemukan saat menyambungkan keenam layar ke API nyata. Dicatat di sini karena
+ketiganya membuat layar **tidak dapat dibuktikan bekerja end-to-end**, dan itu
+harus terlihat sebelum demo, bukan saat demo.
+
+| # | Temuan | Dampak pada layar | Pemilik backend |
+|---|---|---|---|
+| T-1 | `POST/GET /api/pengajuan/{id}/margin` ada di kontrak beku (SDD BAB 5) tetapi **`routes/margin.ts` belum ada** dan tidak terdaftar di `routes/index.ts` | **S-10 belum dapat diuji end-to-end.** Layar dibangun terhadap kontrak; bila server menjawab 404, layar menampilkannya sebagai galat — bukan sebagai "margin tersimpan" | Alfian (FR-07) |
+| T-2 | `POST /api/pengajuan/{id}/skoring/override` masih `// TODO: implement override logic` — mengembalikan echo `{ gradeFinal, alasan }` tanpa menyimpan | **Panel override S-09 mengirim data yang tidak disimpan.** Tidak ada indikasi kegagalan bagi ANL, karena server menjawab 200 | Alfian (FR-06) |
+| T-3 | Ketiga `PUT /api/parameter/*` masih `// TODO: implement update logic` — mengembalikan echo, tidak menulis ke database | **AC-15 belum dapat lolos.** S-13 dapat mengirim bobot baru dan menerima 200, tetapi perhitungan berikutnya memakai nilai lama | Alfian (FR-13) |
+| T-4 | `GET /api/pengajuan/{id}/slik` mengembalikan baris `hasil_slik` mentah dari Prisma, termasuk kolom `diperiksaOleh`; belum ada DTO | S-08 hanya memakai field yang dibutuhkan, tetapi bentuk respons dapat berubah tanpa peringatan saat DTO ditambahkan | Alfian (FR-05) |
+| T-5 | `GET /api/pengajuan/{id}/skoring` memakai `include: { rincian: true }` tanpa DTO; `snapshotParameter` dikirim apa adanya sebagai `jsonb` | S-09 menampilkan rincian dengan aman, tetapi `snapshotParameter` bertipe `unknown` di frontend dan belum dirender | Alfian (FR-06) |
+
+**Yang TIDAK dilakukan sebagai jalan pintas**: tidak ada data tiruan yang
+ditanam di frontend untuk menutupi T-1…T-3, dan tidak ada nilai bawaan rentang
+margin atau bobot yang ditulis di layar. Menutupi keduanya akan membuat layar
+terlihat bekerja saat backend belum siap — persis kegagalan yang paling mahal
+saat penilai menekan tombol.
 
 ---
 
