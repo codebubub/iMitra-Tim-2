@@ -65,6 +65,12 @@ Selesai. Migrasi dan seed dijalankan otomatis oleh service `migrate`; tidak ada 
 tambahan. Tunggu sampai `docker compose ps` menampilkan seluruh service `healthy`
 (sekitar 2–4 menit pada build pertama), lalu buka <http://localhost:3000>.
 
+**Dua mode database, satu perintah.** `.env.example` mengarah ke PostgreSQL lokal di dalam
+compose — itu yang berjalan dengan langkah di atas, dan itu yang dipakai penilai. Anggota
+tim mengubah dua baris di `.env` masing-masing untuk memakai PostgreSQL bersama (Aiven),
+tanpa mengubah perintahnya. Rinciannya — termasuk pembagian schema per orang dan anggaran
+koneksi — ada di [`docs/DATABASE.md`](docs/DATABASE.md).
+
 > **Catatan untuk tim, bukan untuk penilai.** Direktori `backend/prisma/migrations/` harus
 > sudah berisi migrasi awal sebelum langkah di atas bekerja. Migrasi itu dibangkitkan
 > sekali oleh Tech Lead lalu di-commit:
@@ -305,6 +311,9 @@ Tim ini memakai AI sebagai alat rekayasa. Jejaknya ada di tiga tempat:
 |---|---|
 | [`docs/SRS-iMitra.md`](docs/SRS-iMitra.md) | Requirement ringkas turunan brief |
 | [`docs/SDD-iMitra.md`](docs/SDD-iMitra.md) | Arsitektur, model data, daftar endpoint |
+| [`docs/DATABASE.md`](docs/DATABASE.md) | PostgreSQL bersama tim: schema per orang, anggaran koneksi, alur migrasi |
+| [`docs/PEMBAGIAN-TIM.md`](docs/PEMBAGIAN-TIM.md) | Peran, kepemilikan modul, rencana per gate, risiko |
+| [`docs/UIUX-STITCH.md`](docs/UIUX-STITCH.md) | Design system + 14 prompt Google Stitch per layar |
 | [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md) | FR → AC → endpoint → test → PR |
 | [`docs/DEMO-SCRIPT.md`](docs/DEMO-SCRIPT.md) | Skrip demo AC-01 s.d. AC-15 beserta data uji |
 | [`docs/adr/`](docs/adr/) | Architecture Decision Records (minimal 3) |

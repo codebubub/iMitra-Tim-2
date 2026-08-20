@@ -514,6 +514,24 @@ docker compose up --build          # migrasi + seed jalan otomatis
 docker compose down -v             # reset demo ke kondisi seed
 ```
 
+**Database** — dua mode, dipilih dari `.env`, rincian di
+[`docs/DATABASE.md`](docs/DATABASE.md):
+
+- `COMPOSE_PROFILES=lokal` → PostgreSQL container. **Bawaan `.env.example`**, dan inilah
+  yang dipakai penilai dari clone bersih.
+- `COMPOSE_PROFILES=` kosong → PostgreSQL bersama tim (Aiven), satu **schema per orang**.
+
+Yang wajib agent ketahui tentang ini:
+
+- **Jangan pernah menulis kredensial database ke berkas mana pun**, termasuk `.env.example`,
+  `docker-compose.yml`, komentar kode, atau contoh di dokumentasi. Host, port, dan username
+  boleh; password tidak. Ini bagian 6 butir 10, dan CI menggagalkan build kalau menemukannya.
+- **Jangan menghapus service `db` dari `docker-compose.yml`** walaupun tim memakai Aiven.
+  Tanpa service itu penilai tidak bisa menjalankan repo sama sekali — kriteria diskualifikasi.
+- **Jangan menjalankan `prisma migrate dev`** terhadap schema bersama. Migrasi baru hanya
+  dibuat Tech Lead; anggota lain memakai `prisma migrate deploy`.
+- **Jangan menghapus `connection_limit` dari URL.** Kuota 20 koneksi dibagi enam orang.
+
 **Aturan Definition of Done untuk agent**: perubahan dianggap selesai hanya jika lint bersih,
 seluruh test lolos, dan ada minimal satu test yang berasal dari AC terkait — bukan test yang
 diturunkan dari kode yang baru saja ditulis.

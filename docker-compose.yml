@@ -6,27 +6,37 @@
 #      git clone <repo> && cd <repo> && cp .env.example .env && docker compose up
 #  dari CLONE BERSIH di mesin penilai, dan seluruh sistem hidup.
 #
-#  KEPUTUSAN PENTING — DATABASE:
-#  Berkas ini memakai PostgreSQL LOKAL di dalam compose, bukan database terkelola
-#  di internet. Alasannya bukan preferensi, melainkan syarat kelulusan: penilai
-#  menjalankan repo ini di mesin bersih dengan `.env` hasil salinan
-#  `.env.example`. Kalau backend menunjuk ke database terkelola, penilai tidak
-#  punya kredensialnya, tidak punya jaringannya, dan repo dianggap tidak bisa
-#  dijalankan — itu kriteria diskualifikasi, bukan pengurangan nilai (§7.3).
+#  DUA MODE DATABASE — dipilih dari `.env`, bukan dari flag perintah.
+#  Rinciannya di docs/DATABASE.md.
 #
-#  Database terkelola tetap berguna sebagai DATABASE BERSAMA TIM selama
-#  pengembangan. Caranya ada di .env.example bagian "Database bersama tim".
-#  Yang tidak boleh: menjadikannya satu-satunya jalan menjalankan aplikasi.
+#    COMPOSE_PROFILES=lokal   -> container `db` di bawah ikut hidup.
+#                               Ini BAWAAN di .env.example, dan inilah yang
+#                               dipakai penilai dari clone bersih.
 #
-#  Urutan startup dijamin healthcheck, bukan `sleep`:
-#    db sehat -> mock-slik sehat -> migrate selesai -> backend sehat -> frontend
+#    COMPOSE_PROFILES=        -> container `db` dilewati; backend menyambung ke
+#                               DATABASE_URL apa pun yang ada di .env — untuk
+#                               kami, PostgreSQL terkelola Aiven.
+#
+#  Perintahnya tetap satu dan sama untuk keduanya: `docker compose up`.
+#  Yang membedakan hanya isi .env, dan .env tidak pernah di-commit.
+#
+#  Kenapa mode lokal harus tetap menjadi bawaan: penilai menyalin .env.example
+#  apa adanya, dan berkas itu tidak memuat password Aiven (tidak boleh memuatnya,
+#  -10 untuk secret ter-commit). Kalau Aiven satu-satunya jalan, penilai tidak
+#  bisa menjalankan repo ini sama sekali — kriteria DISKUALIFIKASI (§7.3).
+#
+#  Urutan startup dijamin healthcheck dan gelung tunggu di service migrate,
+#  bukan `sleep` yang ditebak panjangnya.
 # =============================================================================
 
 services:
   # ---------------------------------------------------------------------------
-  #  db — PostgreSQL
+  #  db — PostgreSQL lokal. Hanya hidup bila COMPOSE_PROFILES memuat `lokal`.
+  #  Tidak ada service lain yang `depends_on` service ini, justru supaya ia bisa
+  #  dilewati tanpa merusak grafik ketergantungan.
   # ---------------------------------------------------------------------------
   db:
+    profiles: ["lokal"]
     image: postgres:16-alpine
     container_name: imitra-db
     restart: unless-stopped
@@ -100,11 +110,23 @@ services:
       TZ: ${TZ}
     volumes:
       - ./fixtures:/app/fixtures:ro
-    command: >
-      sh -c "npx prisma migrate deploy && npx tsx prisma/seed.ts"
-    depends_on:
-      db:
-        condition: service_healthy
+    # Gelung tunggu, bukan `depends_on: db`. Alasannya: service `db` bisa saja
+    # sengaja tidak dijalankan (mode Aiven), dan depends_on ke service yang
+    # dilewati profil akan menggagalkan `docker compose up`.
+    #
+    # 30 percobaan x 2 detik = maksimum 60 detik. Cukup untuk postgres lokal
+    # yang baru start, dan cukup untuk jaringan yang sedang lambat ke Aiven.
+    # Kalau tetap gagal, container ini keluar dengan kode bukan-nol, dan backend
+    # TIDAK ikut hidup — lebih baik berhenti daripada hidup tanpa skema.
+    # Bentuk daftar, bukan string, supaya tidak ada kutip bersarang yang harus
+    # ditebak siapa yang mem-parsing-nya. `$$` menjadi `$` di dalam container.
+    command:
+      - sh
+      - -c
+      - >-
+        for i in $$(seq 1 30); do npx prisma migrate deploy && break;
+        echo "migrate: database belum siap, percobaan $$i dari 30"; sleep 2; done;
+        npx prisma migrate deploy && npx tsx prisma/seed.ts
     restart: "no"
     networks: [imitra]
 
@@ -140,8 +162,9 @@ services:
     volumes:
       - imitra-uploads:/app/uploads
     depends_on:
-      db:
-        condition: service_healthy
+      # Sengaja TANPA `db`: service itu bisa dilewati profil (mode Aiven).
+      # Kesiapan database sudah dijamin service `migrate` yang harus selesai
+      # sukses lebih dulu.
       mock-slik:
         condition: service_healthy
       migrate:
