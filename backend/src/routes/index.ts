@@ -10,6 +10,9 @@ import {
   ringkasanPengajuan,
   submitPengajuan,
 } from '../services/pengajuan.service.js'
+import { slikRoutes } from './slik.js'
+import { skoringRoutes } from './skoring.js'
+import { parameterRoutes } from './parameter.js'
 import { TidakTerautentikasi } from '../lib/errors.js'
 
 /**
@@ -155,4 +158,8 @@ export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
   //    routes/parameter.ts  FR-13
   //    routes/notifikasi.ts FR-11
   // =========================================================================
+
+  await slikRoutes(app)
+  await skoringRoutes(app)
+  await parameterRoutes(app)
 }

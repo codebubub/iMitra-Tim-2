@@ -1,13 +1,37 @@
-import type { FastifyInstance } from 'fastify';
-import { ImitraError } from '#lib/error.js';
-import { authMiddleware } from '#middleware/auth.js';
+import type { FastifyInstance } from 'fastify'
+import { z } from 'zod'
+import { prisma } from '../lib/prisma.js'
+import { slikService } from '../services/slik.service.js'
 
-export async function slikRoutes(fastify: FastifyInstance) {
-  fastify.post('/api/pengajuan/:id/slik-check', { preHandler: authMiddleware }, async (_req, _reply) => {
-    throw new ImitraError('BELUM_DIIMPLEMENTASI', 'SLIK check akan diimplementasikan di PR berikutnya', 501);
-  });
+const skemaInquiry = z.object({ nik: z.string().length(16) })
 
-  fastify.get('/api/pengajuan/:id/slik', { preHandler: authMiddleware }, async (_req, _reply) => {
-    throw new ImitraError('BELUM_DIIMPLEMENTASI', 'Riwayat SLIK akan diimplementasikan di PR berikutnya', 501);
-  });
+export async function slikRoutes(app: FastifyInstance): Promise<void> {
+  app.post(
+    '/api/pengajuan/:id/slik-check',
+    { config: { peran: ['ANL'] } },
+    async (req, reply) => {
+      const { id } = req.params as { id: string }
+      const { nik } = skemaInquiry.parse(req.body)
+      const hasil = await slikService.cekSlik(id, nik, (req as { pengguna?: { id: string } }).pengguna!.id)
+      return reply.code(201).send(hasil)
+    },
+  )
+
+  app.get(
+    '/api/pengajuan/:id/slik',
+    { config: { peran: ['ANL'] } },
+    async (req) => {
+      const { id } = req.params as { id: string }
+      const anggota = await prisma.pengajuanAnggota.findMany({
+        where: { pengajuanId: id },
+        select: { id: true },
+      })
+      const ids = anggota.map((a) => a.id)
+      const riwayat = await prisma.hasilSlik.findMany({
+        where: { pengajuanAnggotaId: { in: ids } },
+        orderBy: { diperiksaPada: 'desc' },
+      })
+      return riwayat
+    },
+  )
 }

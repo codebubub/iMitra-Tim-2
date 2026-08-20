@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs'
+import bcrypt from 'bcrypt'
 import { prisma } from '../lib/prisma.js'
 import { env } from '../config/env.js'
 import { TidakTerautentikasi } from '../lib/errors.js'

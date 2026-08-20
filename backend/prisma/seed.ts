@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { PrismaClient, type Peran } from '@prisma/client'
-import bcrypt from 'bcryptjs'
+import bcrypt from 'bcrypt'
 
 /**
  * Seed data (brief 7.2 butir 5).
