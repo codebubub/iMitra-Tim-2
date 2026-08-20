@@ -214,9 +214,9 @@ Rancangan lengkap — model data, 32 endpoint, keamanan, deployment — ada di
 | FR | Requirement | Prioritas | Status | PR |
 |---|---|---|---|---|
 | FR-01 | Autentikasi & Otorisasi Berbasis Peran | P0 |  |  |
-| FR-02 | Pengajuan Pembiayaan Mikro | P0 | Sebagian (frontend) | #_ |
-| FR-03 | Upload & Verifikasi Dokumen | P0 | Sebagian (frontend) | #_ |
-| FR-04 | Survei Lapangan (OTS) | P0 | Sebagian (frontend) | #_ |
+| FR-02 | Pengajuan Pembiayaan Mikro | P0 |  |  |
+| FR-03 | Upload & Verifikasi Dokumen | P0 |  |  |
+| FR-04 | Survei Lapangan (OTS) | P0 |  |  |
 | FR-05 | SLIK Check | P0 |  |  |
 | FR-06 | Skoring Kelayakan Mikro | P0 |  |  |
 | FR-07 | Perhitungan Margin / Nisbah | P0 |  |  |
@@ -227,8 +227,8 @@ Rancangan lengkap — model data, 32 endpoint, keamanan, deployment — ada di
 
 | FR | Requirement | Prioritas | Status | PR |
 |---|---|---|---|---|
-| FR-10 | Pembiayaan Kelompok (Majelis) | P1 | Sebagian (frontend) | #_ |
-| FR-11 | Notifikasi Perubahan Status | P1 | Sebagian (frontend) | #_ |
+| FR-10 | Pembiayaan Kelompok (Majelis) | P1 |  |  |
+| FR-11 | Notifikasi Perubahan Status | P1 |  |  |
 | FR-12 | Dashboard Pipeline | P1 |  |  |
 | FR-13 | Parameter Terkonfigurasi | P1 |  |  |
 
