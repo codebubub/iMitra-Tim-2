@@ -5,7 +5,7 @@
 **Tim**: `<!-- ISI: nama tim -->`
 **Versi**: 1.0
 **Tanggal**: 2026-08-20
-**Penyusun**: Eka Purnamasari, Reffa, Hamdani, Alfian, Muhammad Rayhan Subhi
+**Penyusun**: Firman · Eka · Dani · Alfian · Ray · Reffa
 
 ---
 
