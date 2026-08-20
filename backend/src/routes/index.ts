@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { prisma } from '../lib/prisma.js'
 import { bolehDiagnostik } from '../config/env.js'
 import { daftarRoute } from '../middleware/rbac.js'
+import { databaseHidup } from '../repositories/kesehatan.repo.js'
 import { login } from '../services/auth.service.js'
 import {
   buatPengajuan,
@@ -10,7 +10,15 @@ import {
   ringkasanPengajuan,
   submitPengajuan,
 } from '../services/pengajuan.service.js'
+import { cariAudit, riwayatPengajuan } from '../services/audit.service.js'
+import {
+  buatPengguna,
+  daftarPengguna,
+  ubahPengguna,
+} from '../services/pengguna.service.js'
+import { daftarNotifikasi, tandaiDibaca } from '../services/notifikasi.service.js'
 import { TidakTerautentikasi } from '../lib/errors.js'
+import type { Peran } from '../domain/approval.js'
 
 /**
  * Route handler: parsing request, validasi bentuk, pemetaan hasil ke HTTP.
@@ -36,6 +44,84 @@ const skemaAnggota = z.object({
   plafonDiajukan: z.number().int().positive(),
 })
 
+/** Satu daftar peran, dipakai dua kali: oleh Zod dan oleh config.peran route. */
+const DAFTAR_PERAN = ['AO', 'ANL', 'KCP', 'KC', 'KOM', 'ADM'] as const
+
+const PERAN = z.enum(DAFTAR_PERAN)
+
+/** Dipakai route yang terbuka untuk semua peran yang sudah login. */
+const SEMUA_PERAN: Peran[] = [...DAFTAR_PERAN]
+
+/**
+ * Tanggal diterima sebagai YYYY-MM-DD dan ditafsirkan sebagai HARI PENUH:
+ * `dari` mulai 00:00:00 dan `sampai` sampai 23:59:59.999. Tanpa ini,
+ * "sampai=2026-08-20" akan memotong seluruh isi tanggal itu, yang selalu
+ * mengejutkan orang yang memakainya.
+ */
+const tanggalMulaiHari = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Tanggal harus berformat YYYY-MM-DD')
+  .transform((s) => new Date(`${s}T00:00:00.000Z`))
+
+const tanggalAkhirHari = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Tanggal harus berformat YYYY-MM-DD')
+  .transform((s) => new Date(`${s}T23:59:59.999Z`))
+
+const bilanganKueri = z.coerce.number().int().positive()
+
+const skemaFilterAudit = z.object({
+  pengajuanId: z.string().uuid().optional(),
+  aktorId: z.string().uuid().optional(),
+  aksi: z.string().min(1).max(64).optional(),
+  dari: tanggalMulaiHari.optional(),
+  sampai: tanggalAkhirHari.optional(),
+  batas: bilanganKueri.optional(),
+  lewati: z.coerce.number().int().min(0).optional(),
+})
+
+const skemaFilterNotifikasi = z.object({
+  belumDibaca: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
+  batas: bilanganKueri.optional(),
+})
+
+const skemaFilterPengguna = z.object({
+  peran: PERAN.optional(),
+  aktif: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
+})
+
+const skemaBuatPengguna = z.object({
+  // Bentuk lengkapnya divalidasi pengguna.service.ts (POLA_USERNAME); di sini
+  // hanya panjangnya, supaya pesan galat bentuk tetap datang dari satu tempat.
+  username: z.string().min(2).max(32),
+  nama: z.string().min(1).max(120),
+  peran: PERAN,
+  password: z.string().min(1),
+})
+
+/**
+ * `.strict()` supaya field yang tidak dikenal DITOLAK, bukan diabaikan diam-diam.
+ * Tanpa itu, salah ketik `peranBaru` alih-alih `peran` akan menghasilkan 200
+ * yang tidak mengubah apa pun — kesalahan yang paling sulit dilihat pemakainya.
+ */
+const skemaUbahPengguna = z
+  .object({
+    nama: z.string().min(1).max(120).optional(),
+    peran: PERAN.optional(),
+    aktif: z.boolean().optional(),
+    password: z.string().min(1).optional(),
+  })
+  .strict()
+  .refine((o) => Object.keys(o).length > 0, {
+    message: 'Tidak ada field yang diubah',
+  })
+
 const skemaBuatPengajuan = z.object({
   jenisNasabah: z.enum(['PERORANGAN', 'KELOMPOK']),
   akad: z.enum(['MURABAHAH', 'MUSYARAKAH']),
@@ -47,7 +133,7 @@ export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
   // --- Kesehatan & diagnostik ---------------------------------------------
 
   app.get('/health', { config: { peran: 'PUBLIK' } }, async () => {
-    await prisma.$queryRaw`SELECT 1`
+    await databaseHidup()
     return { status: 'ok', database: 'ok' }
   })
 
@@ -76,7 +162,7 @@ export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/api/auth/me',
-    { config: { peran: ['AO', 'ANL', 'KCP', 'KC', 'KOM', 'ADM'] } },
+    { config: { peran: SEMUA_PERAN } },
     async (req) => {
       if (!req.pengguna) throw new TidakTerautentikasi()
       return req.pengguna
@@ -93,7 +179,7 @@ export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/api/pengajuan',
-    { config: { peran: ['AO', 'ANL', 'KCP', 'KC', 'KOM', 'ADM'] } },
+    { config: { peran: SEMUA_PERAN } },
     async (req) => {
       const q = req.query as { status?: string }
       return daftarPengajuan(req.pengguna!, q.status)
@@ -102,7 +188,7 @@ export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/api/pengajuan/:id',
-    { config: { peran: ['AO', 'ANL', 'KCP', 'KC', 'KOM', 'ADM'] } },
+    { config: { peran: SEMUA_PERAN } },
     async (req) => {
       const { id } = req.params as { id: string }
       return ringkasanPengajuan(id)
@@ -119,28 +205,66 @@ export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
   // Tidak ada POST, PUT, PATCH, atau DELETE di bawah ini, dan tidak boleh
   // ditambahkan. Audit ditulis dari dalam service, tidak pernah dari luar.
 
-  app.get(
-    '/api/pengajuan/:id/audit',
-    { config: { peran: ['AO', 'ANL', 'KCP', 'KC', 'KOM', 'ADM'] } },
-    async (req) => {
-      const { id } = req.params as { id: string }
-      const baris = await prisma.auditTrail.findMany({
-        where: { pengajuanId: id },
-        orderBy: { terjadiPada: 'asc' },
-        include: { aktor: { select: { nama: true } } },
-      })
-      return baris.map((b) => ({
-        id: Number(b.id),
-        waktu: b.terjadiPada,
-        aktor: b.aktor?.nama ?? '-',
-        aktorPeran: b.aktorPeran,
-        aksi: b.aksi,
-        statusSebelum: b.statusSebelum,
-        statusSesudah: b.statusSesudah,
-        metadata: b.metadata,
-      }))
-    },
-  )
+  // AC-12 — riwayat satu pengajuan, urut waktu, dengan aktor di setiap baris.
+  app.get('/api/pengajuan/:id/audit', { config: { peran: SEMUA_PERAN } }, async (req) => {
+    const { id } = req.params as { id: string }
+    return riwayatPengajuan(id)
+  })
+
+  // Seluruh audit lintas pengajuan, difilter aktor/aksi/rentang tanggal.
+  // ADM saja: baris audit memuat siapa memutuskan apa dan kapan.
+  app.get('/api/audit', { config: { peran: ['ADM'] } }, async (req) => {
+    const q = skemaFilterAudit.parse(req.query)
+    return cariAudit({
+      pengajuanId: q.pengajuanId,
+      aktorId: q.aktorId,
+      aksi: q.aksi,
+      dari: q.dari,
+      sampai: q.sampai,
+      batas: q.batas,
+      lewati: q.lewati,
+    })
+  })
+
+  // --- Notifikasi (FR-11) --------------------------------------------------
+  //
+  // Keduanya bekerja pada notifikasi MILIK PEMANGGIL. Tidak ada parameter
+  // "penggunaId" yang bisa diisi klien — id pengguna diambil dari token, bukan
+  // dari permintaan, sehingga tidak ada cara meminta notifikasi orang lain.
+
+  app.get('/api/notifikasi', { config: { peran: SEMUA_PERAN } }, async (req) => {
+    const q = skemaFilterNotifikasi.parse(req.query)
+    return daftarNotifikasi(req.pengguna!, { belumDibaca: q.belumDibaca, batas: q.batas })
+  })
+
+  app.post('/api/notifikasi/:id/baca', { config: { peran: SEMUA_PERAN } }, async (req) => {
+    const { id } = req.params as { id: string }
+    await tandaiDibaca(req.pengguna!, id)
+    return { status: 'ok' }
+  })
+
+  // --- Kelola pengguna (FR-01, layar S-14) — ADM saja ----------------------
+  //
+  // Tidak ada DELETE: pengguna dinonaktifkan (aktif=false), tidak dihapus.
+  // Menghapusnya akan memutus baris audit yang menunjuk kepadanya, dan jejak
+  // siapa memutuskan apa adalah inti FR-09.
+
+  app.get('/api/pengguna', { config: { peran: ['ADM'] } }, async (req) => {
+    const q = skemaFilterPengguna.parse(req.query)
+    return daftarPengguna({ peran: q.peran, aktif: q.aktif })
+  })
+
+  app.post('/api/pengguna', { config: { peran: ['ADM'] } }, async (req, reply) => {
+    const masukan = skemaBuatPengguna.parse(req.body)
+    const dibuat = await buatPengguna(req.pengguna!, masukan)
+    return reply.code(201).send(dibuat)
+  })
+
+  app.patch('/api/pengguna/:id', { config: { peran: ['ADM'] } }, async (req) => {
+    const { id } = req.params as { id: string }
+    const masukan = skemaUbahPengguna.parse(req.body)
+    return ubahPengguna(req.pengguna!, id, masukan)
+  })
 
   // =========================================================================
   //  RUANG UNTUK ANGGOTA LAIN — tambahkan berkas route Anda sendiri di sini,
