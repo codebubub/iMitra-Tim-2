@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { PrismaClient, type Peran } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { seedDemo } from './seed-demo.js'
 
 /**
  * Seed data (brief 7.2 butir 5).
@@ -152,13 +153,12 @@ async function main() {
   await seedRentangMargin()
   await seedNasabah()
 
+  await seedDemo()
+
   console.log('Seed selesai.')
   console.log('')
-  console.log('  BELUM DI-SEED — dikerjakan pemilik FR-nya, lihat docs/PEMBAGIAN-TIM.md:')
-  console.log('    - satu pengajuan APPROVED lengkap dengan audit trail  (AC-12)')
-  console.log('    - satu pengajuan bergrade 1 siap penetapan margin      (AC-09)')
-  console.log('    - satu pengajuan kelompok 4 x Rp 60.000.000            (AC-14)')
-  console.log('    - satu pengajuan Rp 120.000.000 di MENUNGGU_APPROVAL_L1 (AC-10)')
+  console.log('  Data siap-demo tersedia untuk AC-09, AC-10, AC-12, dan AC-14.')
+  console.log('  Rincian skenarionya ada di docs/DEMO-SCRIPT.md.')
 }
 
 main()
