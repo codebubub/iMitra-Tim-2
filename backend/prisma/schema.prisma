@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model pengguna {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  nama          String
+  password_hash String
+  peran         String
+  aktif         Boolean   @default(true)
+  dibuat_pada   DateTime  @default(now()) @db.Timestamptz
+}
+
+model pengajuan {
+  id                String    @id @default(uuid())
+  nomor_referensi   String    @unique
+  jenis_nasabah     String
+  akad              String
+  tenor_bulan       Int
+  status            String
+  dibuat_oleh       String
+  dibuat_pada       DateTime  @default(now()) @db.Timestamptz
+}
+
+model pengajuan_anggota {
+  id                  String    @id @default(uuid())
+  pengajuan_id        String
+  nasabah_id          String
+  plafon_diajukan     BigInt
+  status_anggota      String    @default("AKTIF")
+  urutan              Int
+}
+
+model hasil_slik {
+  id                     String    @id @default(uuid())
+  pengajuan_anggota_id   String
+  status_panggilan       String
+  kolektibilitas        Int?
+  jumlah_fasilitas_aktif Int?
+  total_baki_debet       BigInt?
+  tanggal_data           DateTime? @db.Date
+  reference_id           String?
+  diperiksa_pada         DateTime  @default(now()) @db.Timestamptz
+}
