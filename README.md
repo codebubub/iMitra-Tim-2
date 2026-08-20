@@ -71,6 +71,10 @@ tim mengubah dua baris di `.env` masing-masing untuk memakai PostgreSQL bersama 
 tanpa mengubah perintahnya. Rinciannya — termasuk pembagian schema per orang dan anggaran
 koneksi — ada di [`docs/DATABASE.md`](docs/DATABASE.md).
 
+**Runbook lengkap** — menjalankan tanpa Docker, sembilan pemeriksaan untuk membuktikan
+sistemnya benar-benar jalan, dan daftar gejala yang pernah kami temui beserta
+perbaikannya — ada di [`docs/SETUP.md`](docs/SETUP.md).
+
 > **Catatan untuk tim, bukan untuk penilai.** Direktori `backend/prisma/migrations/` harus
 > sudah berisi migrasi awal sebelum langkah di atas bekerja. Migrasi itu dibangkitkan
 > sekali oleh Tech Lead lalu di-commit:
@@ -311,6 +315,7 @@ Tim ini memakai AI sebagai alat rekayasa. Jejaknya ada di tiga tempat:
 |---|---|
 | [`docs/SRS-iMitra.md`](docs/SRS-iMitra.md) | Requirement ringkas turunan brief |
 | [`docs/SDD-iMitra.md`](docs/SDD-iMitra.md) | Arsitektur, model data, daftar endpoint |
+| [`docs/SETUP.md`](docs/SETUP.md) | **Runbook lengkap**: prasyarat, dua jalur menjalankan, tanpa Docker, verifikasi, troubleshooting |
 | [`docs/DATABASE.md`](docs/DATABASE.md) | PostgreSQL bersama tim: schema per orang, anggaran koneksi, alur migrasi |
 | [`docs/PEMBAGIAN-TIM.md`](docs/PEMBAGIAN-TIM.md) | Peran, kepemilikan modul, rencana per gate, risiko |
 | [`docs/UIUX-STITCH.md`](docs/UIUX-STITCH.md) | Design system + 14 prompt Google Stitch per layar |
