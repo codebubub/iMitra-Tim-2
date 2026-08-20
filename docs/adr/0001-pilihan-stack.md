@@ -2,7 +2,7 @@
 
 - **Status**: Accepted
 - **Tanggal**: 2026-08-20
-- **Pengambil keputusan**: Tech Lead — Muhammad Rayhan Subhi, dengan masukan seluruh anggota
+- **Pengambil keputusan**: Tech Lead — Firman, dengan masukan seluruh anggota
 - **Terkait**: seluruh FR; brief §7.1, §7.2; `AGENTS.md` bagian 2; `docs/SDD-iMitra.md` BAB 1.3
 
 ---
@@ -130,16 +130,18 @@ dan kami tidak perlu menulis ulang berkas konfigurasi yang sudah benar.
 **Rencana kalau ternyata salah** — jawaban kami untuk pertanyaan Gate 1 *"apa satu hal yang
 paling mungkin membuat tim ini gagal, dan apa rencana Anda untuk itu?"*:
 
-- **Risiko terbesar kami bukan stack — melainkan frontend menjadi leher botol.** Satu orang
-  memegang 13 layar untuk 6 peran, sementara backend dikerjakan tiga orang. Kalau backend
-  selesai lebih cepat, pekerjaan menumpuk di satu orang di jam-jam terakhir, dan menambah
-  orang di jam ke-7 justru memperlambat.
+- **Risiko terbesar kami bukan stack — melainkan backend menjadi leher botol.** Kami
+  memilih 3 backend + 3 frontend (lihat `docs/PEMBAGIAN-TIM.md` bagian 0), sehingga sembilan
+  FR P0 beserta seluruh aturan bisnis dipegang tiga orang — dan satu di antaranya juga
+  memegang infra. Kalau infra molor, dua orang menanggung seluruh aturan bisnis.
 - **Sinyal bahwa keputusan ini salah**: pada **Kamis 14.00** walking skeleton (login → buat
-  pengajuan → tampil di daftar) belum jalan ujung ke ujung.
-- **Yang akan kami lakukan**: Backend Engineer Alur (Hamdani) berpindah ke frontend mulai
-  Jumat 09.20 dan mengambil layar ANL (dokumen, SLIK, skoring, margin), sementara Frontend
-  Engineer (Reffa) fokus ke layar AO dan approver. Kontrak API sudah dibekukan Kamis siang
-  supaya perpindahan ini tidak memerlukan koordinasi tambahan.
+  pengajuan → tampil di daftar) belum jalan ujung ke ujung, atau `POST /api/pengajuan`
+  belum menyimpan ke database.
+- **Yang akan kami lakukan**: Reffa (Frontend Lead, merangkap QA) berpindah ke backend mulai
+  Jumat 09.20 dan mengambil FR-04 survei serta query terfilter peran untuk FR-12. Itu
+  memungkinkan karena fondasi UI ditargetkan selesai **Kamis 13.00**, sehingga Ray dan Eka
+  tidak terhambat oleh kepergiannya. Kontrak API dibekukan Kamis 13.00 supaya perpindahan
+  ini tidak memerlukan koordinasi tambahan.
 - **Batas waktu memutuskan**: **Kamis 15.30 di Gate 2.** Kalau walking skeleton belum jalan
   di depan instruktur, perpindahan itu diputuskan malam itu juga, bukan Jumat siang.
 

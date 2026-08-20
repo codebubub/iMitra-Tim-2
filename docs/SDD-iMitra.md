@@ -5,7 +5,7 @@
 **Tim**: `<!-- ISI: nama tim -->`
 **Versi**: 1.0
 **Tanggal**: 2026-08-20
-**Penyusun**: Firman · Eka · Dani · Alfian · Ray · Reffa
+**Penyusun**: Firman · Alfian · Dani · Reffa · Ray · Eka
 
 ---
 

@@ -1,7 +1,7 @@
 # UI/UX — Prompt Google Stitch untuk iMitra
 
 **Pemilik berkas**: Frontend Lead — Reffa
-**Dikerjakan oleh**: Reffa · Firman · Eka (pembagian layar di `docs/PEMBAGIAN-TIM.md` §1)
+**Dikerjakan oleh**: Reffa · Ray · Eka (pembagian layar di `docs/PEMBAGIAN-TIM.md` §1)
 **Turunan dari**: `docs/SDD-iMitra.md` BAB 6 · `docs/SRS-iMitra.md` BAB 5.1
 **Tanggal**: 2026-08-20
 
@@ -50,15 +50,15 @@ perilaku**, bukan untuk menyusun grid dan memilih warna.
 | Gelombang | Layar | Pemilik | Kapan |
 |---|---|---|---|
 | 1 | S-01 Login · S-02 Dashboard | Reffa | Sprint 0, sebelum Gate 1 |
-| 1 | S-03 Buat Pengajuan | Firman | Kamis siang, untuk Gate 2 |
+| 1 | S-03 Buat Pengajuan | Ray | Kamis siang, untuk Gate 2 |
 | 2 | S-04 Detail Pengajuan · S-12 Audit Trail | Reffa | Jumat pagi |
-| 2 | S-05 Upload Dokumen · S-06 Verifikasi Dokumen · S-07 Survei | Firman | Jumat pagi |
+| 2 | S-05 Upload Dokumen · S-06 Verifikasi Dokumen · S-07 Survei | Ray | Jumat pagi |
 | 2 | S-08 SLIK · S-09 Skoring · S-10 Margin | Eka | Jumat pagi |
 | 3 | S-11 Antrian Approval | Eka | Jumat pagi |
 | 4 | S-13 Parameter ADM · S-14 Kelola Pengguna | Eka | Jumat siang |
 
 **Reffa menyelesaikan fondasi UI lebih dulu** — `theme.css`, badge status, kartu, panel
-galat, layout + sidebar — target **Kamis 13.00**. Sampai itu ada di `main`, Firman dan Eka
+galat, layout + sidebar — target **Kamis 13.00**. Sampai itu ada di `main`, Ray dan Eka
 menghasilkan tata letak di Stitch tetapi belum menempelkannya ke `frontend/`, supaya tidak
 ada tiga versi komponen yang sama.
 
@@ -136,20 +136,20 @@ layarnya melenceng, AC itu yang gagal saat demo.
 
 | # | Layar | Mode | Peran | AC | Pemilik | Backend yang dipanggil |
 |---|---|---|---|---|---|---|
-| S-01 | Login | Web | Publik | AC-01 | **Reffa** | Ray |
+| S-01 | Login | Web | Publik | AC-01 | **Reffa** | Firman |
 | S-02 | Dashboard Pipeline | Web | Semua | FR-12 | **Reffa** | Dani |
-| S-03 | Buat Pengajuan | Mobile | AO | AC-01, AC-14 | **Firman** | Dani |
+| S-03 | Buat Pengajuan | Mobile | AO | AC-01, AC-14 | **Ray** | Dani |
 | S-04 | Detail Pengajuan | Web | Semua | semua | **Reffa** | Dani |
-| S-05 | Upload Dokumen | Mobile | AO | AC-03 | **Firman** | Dani |
-| S-06 | Verifikasi Dokumen | Web | ANL | AC-02, AC-03 | **Firman** | Dani |
-| S-07 | Rekam & Nilai Survei | Mobile | AO, ANL | AC-04 | **Firman** | Dani |
+| S-05 | Upload Dokumen | Mobile | AO | AC-03 | **Ray** | Dani |
+| S-06 | Verifikasi Dokumen | Web | ANL | AC-02, AC-03 | **Ray** | Dani |
+| S-07 | Rekam & Nilai Survei | Mobile | AO, ANL | AC-04 | **Ray** | Dani |
 | S-08 | SLIK Check | Web | ANL | AC-05, AC-06 | **Eka** | Alfian |
 | S-09 | Skoring | Web | ANL | AC-06, AC-07, AC-08 | **Eka** | Alfian |
 | S-10 | Margin / Nisbah | Web | ANL | AC-09 | **Eka** | Alfian |
 | S-11 | Antrian Approval | Web | KCP/KC/KOM | AC-10, AC-11 | **Eka** | Dani |
-| S-12 | Audit Trail | Web | Semua | AC-12, AC-13 | **Reffa** | Ray |
+| S-12 | Audit Trail | Web | Semua | AC-12, AC-13 | **Reffa** | Firman |
 | S-13 | Parameter | Web | ADM | AC-15 | **Eka** | Alfian |
-| S-14 | Kelola Pengguna | Web | ADM | — | **Eka** | Ray |
+| S-14 | Kelola Pengguna | Web | ADM | — | **Eka** | Firman |
 
 Kolom "Backend yang dipanggil" adalah **pasangan bicara** saat bentuk respons perlu
 dipastikan. Setelah kontrak API dibekukan Kamis 13.00, bentuk respons tidak berubah lagi

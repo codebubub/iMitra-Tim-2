@@ -2,7 +2,7 @@
 
 - **Status**: Accepted
 - **Tanggal**: 2026-08-20
-- **Pengambil keputusan**: Tech Lead — Muhammad Rayhan Subhi, bersama Backend Engineer Risiko — Alfian
+- **Pengambil keputusan**: Tech Lead — Firman, bersama Backend Engineer Risiko — Alfian
 - **Terkait**: FR-06, FR-07, FR-08, **FR-13**; BR-05, BR-06, BR-07, BR-08; **AC-15**, AC-09; `docs/SDD-iMitra.md` BAB 2.3 dan 4.1
 
 ---

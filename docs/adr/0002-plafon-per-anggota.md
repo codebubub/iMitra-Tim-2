@@ -2,7 +2,7 @@
 
 - **Status**: Accepted
 - **Tanggal**: 2026-08-20
-- **Pengambil keputusan**: Tech Lead — Muhammad Rayhan Subhi
+- **Pengambil keputusan**: Tech Lead — Firman
 - **Terkait**: FR-02, FR-08, FR-10; BR-01, BR-02; **AC-10, AC-14**; `docs/SDD-iMitra.md` BAB 3.1 dan 4.1; DEVLOG-`<!-- ISI: nomor entri saat model data dikritik -->`
 
 ---
