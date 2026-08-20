@@ -174,17 +174,47 @@ yang bisa diulang orang lain.
      "### [DEVLOG-04] ... (FR-07) — kasus AI salah".
      Ingat: minimal 3 entri kegagalan, dan minimal 3 entri sudah ada sebelum Gate 2. -->
 
-### [DEVLOG-01] `<!-- ISI: judul -->` (FR-`<!-- ISI -->`)
-- **Waktu**:
-- **Oleh**:
-- **Tool/Model**:
-- **Tugas**:
-- **Cara memberi konteks**:
-- **Keluaran AI**:
-- **Yang salah**:
-- **Cara verifikasi**:
-- **Tindakan**:
-- **Pelajaran**:
+### [DEVLOG-01] Klien API & layar lapangan AO dibangun dari kontrak beku (FR-02/03/04/11) — kasus AI salah
+- **Waktu**: 2026-08-20 20:35
+- **Oleh**: Ray
+- **Tool/Model**: 9Router → Claude Opus (mode agent dengan akses tulis ke repo)
+- **Tugas**: Membangun layar milik saya (S-03 Buat Pengajuan, S-05 Upload Dokumen,
+  S-06 Verifikasi Dokumen, S-07 Survei, FR-11 Notifikasi) beserta modul
+  `src/api/{pengajuan,dokumen,survei,notifikasi}.ts`, terhadap kontrak beku
+  SDD BAB 5. Endpoint dokumen/survei/anggota milik Dani belum ada (jalur R-3),
+  jadi frontend dibangun ke kontrak, bukan menunggu backend.
+- **Cara memberi konteks**: melampirkan SDD BAB 5 (daftar 32 endpoint), BAB 4.1
+  (model data), AGENTS.md bagian 4.1 (enum status) & bagian 6 (larangan), serta
+  spesifikasi layar S-03..S-07 dari UIUX-STITCH.md. Batasan eksplisit yang saya
+  sebutkan: jangan hardcode angka bisnis (R-8/#3), URL berkas pakai id bukan NIK
+  (BR-11), nomor referensi dari server (#4).
+- **Keluaran AI**: 4 modul API + 5 komponen layar + 5 route di App.tsx. Build
+  `tsc -b && vite build` hijau, eslint bersih pada percobaan pertama.
+- **Yang salah**: keluaran yang "hijau" itu ternyata tidak cocok dengan bentuk
+  respons/permintaan backend yang SEBENARNYA ada di `services/pengajuan.service.ts`.
+  Tiga ketidakcocokan halus: (1) tipe anggota memakai `nikTertutup`, server
+  mengirim `nikTersamar`; (2) tipe detail memakai `levelApproval`, server
+  mengirim `urutanApproval` + `jumlahLevel`; (3) — yang paling merugikan —
+  `AnggotaBaru` menandai `alamat` dan `jenisUsaha` sebagai OPSIONAL, padahal skema
+  zod route (`skemaAnggota`) mewajibkan keduanya `.min(1)`. Form Buat Pengajuan
+  saya tidak mengumpulkan kedua field itu sama sekali, jadi setiap submit AO akan
+  ditolak 400 di server. Tidak terlihat oleh typecheck karena keduanya sisi
+  frontend yang konsisten satu sama lain — hanya salah terhadap kontrak backend.
+- **Cara verifikasi**: menyalakan backend terhadap database Aiven schema `dev_ray`
+  (yang sudah dimigrasi + di-seed), lalu membaca `routes/index.ts` dan
+  `services/pengajuan.service.ts` baris demi baris untuk membandingkan field
+  respons dan skema zod permintaan dengan tipe TypeScript saya. Bukan "dibaca
+  sekilas dan tampak benar" — saya cocokkan nama field satu per satu.
+- **Tindakan**: memperbaiki tipe di `src/api/pengajuan.ts` (`nikTersamar`,
+  `urutanApproval`/`jumlahLevel`, `RingkasBuatPengajuan` untuk POST create/submit),
+  menjadikan `alamat`/`jenisUsaha` WAJIB, dan menambahkan input Alamat + Jenis
+  usaha di form S-03 untuk perorangan maupun majelis. Build + lint hijau ulang.
+- **Pelajaran**: build hijau + lint bersih pada kode frontend hanya membuktikan
+  frontend konsisten dengan DIRINYA SENDIRI, bukan dengan kontrak backend. Untuk
+  layar yang dibangun mendahului endpoint (R-3), verifikasi yang benar adalah
+  membandingkan tipe langsung ke skema zod route dan bentuk respons service —
+  bukan menunggu runtime. Kontrak dibekukan Kamis 13.00; setiap perubahan bentuk
+  respons harus diumumkan dan SDD BAB 5 diperbarui di PR yang sama.
 
 ### [DEVLOG-02] `<!-- ISI: judul -->` (FR-`<!-- ISI -->`)
 - **Waktu**:
