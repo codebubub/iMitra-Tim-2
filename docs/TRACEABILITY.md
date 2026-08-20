@@ -1,105 +1,175 @@
 # TRACEABILITY — FR → AC → Endpoint → Test → PR
 
 **Tim**: `<!-- ISI: nama tim -->`
-**Terakhir diperbarui**: `<!-- ISI: tanggal & jam -->`
+**Terakhir diperbarui**: 2026-08-20, dibaca langsung dari repo (bukan dari rencana)
+**Dasar pemeriksaan**: `origin/main` = `2653b21`, plus lima branch yang belum di-merge
 
 ---
 
-## Cara memakai tabel ini sebagai alat deteksi risiko
+## Cara membaca berkas ini
 
-Tabel ini **alat kerja Anda sendiri**, bukan formalitas untuk penilai (brief §8.4). Ia dipakai
-seperti ini:
+Status di bawah **dibaca dari kode**, bukan dari niat. Aturannya:
 
-1. **Baris tanpa "File test" adalah risiko, bukan kekurangan administrasi.** FR yang jalan
-   tetapi tidak punya test berarti Anda tidak tahu ia masih jalan setelah PR berikutnya.
-   Pada Jumat pagi, baris-baris inilah yang paling mungkin gagal saat demo.
-2. **Baris tanpa "Endpoint" pada FR P0 berarti fitur itu belum ada**, seberapa pun ramai
-   diskusinya di grup. Isi kolom ini dari daftar route yang benar-benar terdaftar, bukan dari
-   rencana.
-3. **AC tanpa test otomatis wajib punya baris di `DEMO-SCRIPT.md`.** Kalau tidak ada di
-   keduanya, AC itu tidak diverifikasi oleh siapa pun.
-4. **Isi selama bekerja, bukan di akhir.** Cara termurah: setiap kali membuka PR, perbarui
-   baris FR yang disentuh — itu bagian dari checklist PR.
-5. **Pakai ini di Gate 3 (Jumat 11.20)** untuk memutuskan FR mana yang dibuang. Keputusan
-   membuang jauh lebih mudah kalau Anda bisa melihat mana yang punya test dan mana yang tidak.
+- **Selesai** = route terdaftar **dan** ada berkas test yang menutup AC-nya
+- **Selesai (tanpa test)** = route terdaftar, test belum ada
+- **Belum** = route masih stub `501 BELUM_DIIMPLEMENTASI`, atau berkasnya belum ada
+- **Kolom "Di branch"** penting: hampir semua pekerjaan **belum di-merge ke `main`**.
+  Selama itu, `main` tidak bisa menjalankan sebagian besar FR
 
-**Cara memakainya 10 menit sebelum demo**: urutkan mental sebagai berikut — P0 tanpa test,
-lalu P0 dengan test tetapi status belum Done, lalu P1. Latih demo untuk baris teratas
-lebih dulu. Penilai akan meminta AC secara acak, termasuk jalur error.
-
-**Nilai kolom Status yang diizinkan**: `Belum` · `In Progress` · `Done` · `Done (tanpa test)`
-· `Dibuang`. Pada tag `v1.0.0` tidak boleh ada lagi `In Progress` — ubah menjadi `Dibuang`
-atau `Done (tanpa test)` dan jelaskan di `README.md` bagian 5.
+Baris tanpa test adalah **risiko**, bukan kekurangan administrasi. Pada Jumat pagi, baris
+itulah yang paling mungkin gagal saat demo.
 
 ---
 
-## Tabel Traceability
+## 1. Ringkasan — tiga angka yang menentukan posisi kita
 
-<!-- ISI: kolom Endpoint, File test, PR, dan Status. Kolom FR, Judul, Prioritas, dan
-     "AC terkait" sudah pre-isi dari brief §3 dan §5 — jangan diubah, penilai mencocokkannya.
-     Kolom Endpoint: daftar endpoint nyata, mis. POST /api/pengajuan, GET /api/pengajuan/{id}.
-     Kolom File test: path berkas test, mis. backend/tests/skoring.test.ts.
-     Kolom PR: nomor PR, mis. #14. -->
+| Pertanyaan | Jawaban hari ini |
+|---|---|
+| FR P0 selesai **dan** ada test | **6 dari 9** (FR-01, 02, 03, 04, 08, 09) |
+| FR P0 belum dikerjakan sama sekali | **3** — FR-05, FR-06, FR-07 |
+| FR P1 selesai | **1 dari 4** (FR-10). FR-11 backend selesai, UI belum tersambung |
+| Berapa yang sudah di `main`? | **Nol FR fitur.** `main` hanya berisi fondasi |
+| BR tanpa test | 4 dari 12 — BR-03 (parsial), BR-04, BR-06, BR-08 |
 
-| FR | Judul | Prioritas | AC terkait | Endpoint | File test | PR | Status |
+**Risiko terbesar**: FR-05, FR-06, FR-07, dan FR-13 semuanya milik satu orang, dan keempatnya
+masih stub. Di antara mereka ada **enam AC**: AC-05, AC-06, AC-07, AC-08, AC-09, AC-15.
+
+---
+
+## 2. Tabel Traceability
+
+| FR | Judul | P | Pemilik | Endpoint | File test | Di branch | Status |
 |---|---|---|---|---|---|---|---|
-| FR-01 | Autentikasi & Otorisasi Berbasis Peran | P0 | AC-01, AC-02 | `POST /api/auth/login` · `GET /api/auth/me` · `GET/POST /api/pengguna` · `PATCH /api/pengguna/{id}` | `backend/tests/integration/rbac.spec.ts` · `backend/tests/integration/pengguna.spec.ts` |  | Done |
-| FR-02 | Pengajuan Pembiayaan Mikro | P0 | AC-01 |  |  |  |  |
-| FR-03 | Upload & Verifikasi Dokumen | P0 | AC-03 |  |  |  |  |
-| FR-04 | Survei Lapangan (OTS) | P0 | AC-04 |  |  |  |  |
-| FR-05 | SLIK Check | P0 | AC-05, AC-06 |  |  |  |  |
-| FR-06 | Skoring Kelayakan Mikro | P0 | AC-06, AC-07, AC-08 |  |  |  |  |
-| FR-07 | Perhitungan Margin / Nisbah | P0 | AC-09 |  |  |  |  |
-| FR-08 | Approval Berjenjang | P0 | AC-10, AC-11 |  |  |  |  |
-| FR-09 | Audit Trail | P0 | AC-08, AC-12, AC-13 | `GET /api/pengajuan/{id}/audit` · `GET /api/audit` | `backend/tests/integration/audit.spec.ts` · `backend/tests/integration/audit-readonly.spec.ts` |  | Done |
-| FR-10 | Pembiayaan Kelompok (Majelis) | P1 | AC-14 |  |  |  |  |
-| FR-11 | Notifikasi Perubahan Status | P1 | — | `GET /api/notifikasi` · `POST /api/notifikasi/{id}/baca` | `backend/tests/integration/notifikasi.spec.ts` |  | Done (backend) |
-| FR-12 | Dashboard Pipeline | P1 | — |  |  |  |  |
-| FR-13 | Parameter Terkonfigurasi | P1 | AC-15 |  |  |  |  |
-| FR-14 | Simulasi angsuran murabahah & proyeksi bagi hasil musyarakah | P2 | — |  |  |  |  |
-| FR-15 | Ekspor daftar pengajuan ke CSV | P2 | — |  |  |  |  |
-| FR-16 | Mode draft offline untuk AO di lapangan | P2 | — |  |  |  |  |
-| FR-17 | Deteksi lokasi palsu (mock location) pada survei lapangan | P2 | — |  |  |  |  |
-| FR-18 | Laporan Turn-Around Time per tahap dan per petugas | P2 | — |  |  |  |  |
+| FR-01 | Autentikasi & Otorisasi | P0 | Firman | `POST /api/auth/login`, `GET /api/auth/me` | `integration/rbac.spec.ts` | `firman` | ✅ **Selesai & teruji** |
+| FR-02 | Pengajuan Mikro | P0 | Dani | `POST /api/pengajuan`, `GET /api/pengajuan`, `GET /:id`, `POST /:id/submit` | `unit/margin-plafon.spec.ts` (BR-01, BR-12) | `dani` | ✅ **Selesai & teruji** |
+| FR-03 | Upload & Verifikasi Dokumen | P0 | Dani | `routes/dokumen.ts` | `integration/dokumen.spec.ts`, `unit/dokumen.spec.ts` | `dani` | ✅ **Selesai & teruji** |
+| FR-04 | Survei Lapangan | P0 | Dani | `routes/survei.ts` | `integration/skoring-prasyarat.spec.ts` | `dani` | ✅ **Selesai & teruji** |
+| FR-05 | SLIK Check | P0 | Alfian | `routes/slik.ts` — **2 stub 501** | `unit/slik-client.spec.ts` (klien saja) | — | ❌ **Belum** |
+| FR-06 | Skoring Kelayakan | P0 | Alfian | `routes/skoring.ts` — **3 stub 501** | `unit/skoring.spec.ts` (domain saja, 23 test) | — | ❌ **Belum** — domain siap, service & route belum |
+| FR-07 | Margin / Nisbah | P0 | Alfian | **`routes/margin.ts` belum ada** | `unit/margin-plafon.spec.ts` (domain saja) | — | ❌ **Belum** |
+| FR-08 | Approval Berjenjang | P0 | Dani | `routes/approval.ts` | `integration/approval.spec.ts`, `unit/approval.spec.ts` | `dani` | ✅ **Selesai & teruji** |
+| FR-09 | Audit Trail | P0 | Firman | `GET /api/pengajuan/:id/audit`, `GET /api/audit` | `integration/audit.spec.ts`, `audit-readonly.spec.ts` | `firman` | ✅ **Selesai & teruji** |
+| FR-10 | Pembiayaan Kelompok | P1 | Dani | `POST /api/pengajuan/:id/anggota` | `integration/kelompok.spec.ts` | `dani` | ✅ **Selesai & teruji** |
+| FR-11 | Notifikasi | P1 | Firman (BE) + Ray (UI) | `GET /api/notifikasi`, `POST /:id/baca` | `integration/notifikasi.spec.ts` | `firman` + `feat/FR-02-…` | ⚠️ **BE selesai, UI belum tersambung** |
+| FR-12 | Dashboard Pipeline | P1 | Reffa | belum ada | belum ada | — | ❌ **Belum** |
+| FR-13 | Parameter Terkonfigurasi | P1 | Alfian | `routes/parameter.ts` — **6 stub 501** | belum ada | — | ❌ **Belum** |
+| FR-14…18 | P2 | P2 | — | — | — | — | ⛔ **Dibuang** — lihat `README.md` bagian 5 |
 
-FR-11 dan FR-12 tidak dirujuk langsung oleh AC mana pun. Itu bukan berarti keduanya tidak
-diverifikasi — **tetapkan kriteria verifikasi Anda sendiri** untuk keduanya dan tulis di
-`DEMO-SCRIPT.md`, karena penilai tetap akan melihatnya saat demo alur utama.
+**Infrastruktur** (bukan FR, tetapi diperiksa penilai):
+
+| Item | Bukti | Status |
+|---|---|---|
+| Mock SLIK sesuai kontrak §6.1 | `mock-slik/tests/kontrak.spec.ts` — 8 test lolos | ✅ Selesai & teruji |
+| `docker compose up` satu perintah | 5 service, healthcheck berantai | ✅ Selesai — **belum diuji dari clone bersih** |
+| Migrasi dari berkas | 3 migrasi, 16 tabel + 11 enum | ✅ Selesai |
+| Seed idempoten | Dijalankan dua kali, tidak menggandakan | ✅ Selesai & teruji |
+| Data siap-demo | 5 pengajuan, AC-06/09/10/12/14 | ✅ Selesai & teruji |
+| CI | 6 job: higiene, lint ×3, unit, mock-slik, integrasi | ✅ Selesai — **belum pernah hijau di remote** |
+| Database bersama tim | 14 schema Aiven, dimigrasi + di-seed | ✅ Selesai |
 
 ---
 
-## Penelusuran Aturan Bisnis
+## 3. Status per orang
 
-<!-- ISI: kolom "Ditegakkan di" dan "Test". BR tanpa test adalah risiko terbesar di sistem
-     perbankan, karena pelanggarannya tidak terlihat di jalur bahagia.
-     Kolom "Ditegakkan di" harus sama dengan yang tertulis di AGENTS.md bagian 5. -->
+| Orang | Ditugaskan | Selesai | Belum | Branch |
+|---|---|---|---|---|
+| **Dani** | FR-02, 03, 04, 08, 10 | **5 dari 5**, semuanya bertest | — | `dani`, 4 commit |
+| **Firman** | FR-01, 09, 11 + infra | **3 dari 3** + seluruh infra & dokumen | — | `firman`, 11 commit |
+| **Ray** | S-03, 05, 06, 07 + FR-11 UI | **5 layar dari 5**, 1.953 baris | Belum tersambung ke `main` | `feat/FR-02-buat-pengajuan`, 3 commit, **sudah di-rebase** |
+| **Alfian** | FR-05, 06, 07, 13 + mock SLIK | mock SLIK (klien) | **4 FR — keempatnya masih stub** | `alfian`, 1 commit — **isinya frontend, bukan FR miliknya** |
+| **Reffa** | Fondasi UI, S-01, 02, 04, 12, QA | — | Semuanya | `reffa`, 0 commit |
+| **Eka** | S-08…11, 13, 14 + AI Workflow | — | Semuanya | `eka`, 0 commit |
+
+---
+
+## 4. Checklist — yang sudah dan yang belum
+
+### ✅ Sudah selesai
+
+- [x] Skema database 16 tabel + 11 enum, dari migrasi
+- [x] Seed idempoten: 7 akun, 10 nasabah, 8 parameter, 3 ambang, 5 rentang margin
+- [x] Data siap-demo 5 pengajuan (AC-06, 09, 10, 12, 14)
+- [x] 14 schema Aiven dimigrasi dan di-seed untuk 6 orang + CI + demo
+- [x] Mock SLIK sesuai kontrak §6.1, 4 cabang respons, mode paksa untuk demo
+- [x] `docker compose` 5 service dengan healthcheck berantai, dua mode database
+- [x] CI 6 job termasuk pemindai kredensial
+- [x] FR-01 Autentikasi & otorisasi fail-closed
+- [x] FR-02 Pengajuan + nomor referensi `IMT-YYYYMMDD-NNNN`
+- [x] FR-03 Upload & verifikasi dokumen berversi
+- [x] FR-04 Survei lapangan + prasyarat BR-03
+- [x] FR-08 Approval berjenjang (BR-02, BR-09)
+- [x] FR-09 Audit trail append-only, **ditegakkan trigger database**
+- [x] FR-10 Pembiayaan kelompok + evaluasi ulang level
+- [x] FR-11 Notifikasi (backend)
+- [x] Lapisan `domain/` lengkap: 71 unit test lolos
+- [x] 5 layar frontend AO & dokumen (Ray)
+- [x] Dokumen: SRS, SDD, 3 ADR, SETUP, DATABASE, DEMO-SCRIPT, UIUX-STITCH, PEMBAGIAN-TIM
+
+### ❌ Belum selesai — urut prioritas
+
+**Prioritas 1 — P0 yang belum ada sama sekali (Alfian):**
+
+- [ ] **FR-05 SLIK Check** — `routes/slik.ts` masih 2 stub 501 → menutup **AC-05, AC-06**
+- [ ] **FR-06 Skoring** — `routes/skoring.ts` masih 3 stub 501 → menutup **AC-07, AC-08**
+      Domain sudah siap dan bertest; yang kurang service + route
+- [ ] **FR-07 Margin** — `routes/margin.ts` **belum ada** → menutup **AC-09**
+      Domain sudah siap dan bertest
+
+**Prioritas 2 — merge yang tertahan:**
+
+- [ ] Merge `dani` (5 FR) lewat PR
+- [ ] Merge `firman` (3 FR + infra) lewat PR
+- [ ] Merge `feat/FR-02-buat-pengajuan` (5 layar Ray) lewat PR — **sudah di-rebase, siap**
+- [ ] Selesaikan tabrakan branch `alfian`: berisi stub layar milik Ray dan Eka
+
+**Prioritas 3 — P1:**
+
+- [ ] **FR-13 Parameter** — 6 stub 501 → menutup **AC-15**
+- [ ] **FR-12 Dashboard Pipeline** — belum ada (Reffa)
+- [ ] Fondasi UI: `theme.css`, komponen bersama, layout, guard peran (Reffa)
+- [ ] Layar S-01 Login, S-02 Dashboard, S-04 Detail, S-12 Audit (Reffa)
+- [ ] Layar S-08 SLIK, S-09 Skoring, S-10 Margin, S-11 Antrian, S-13 Parameter, S-14 Pengguna (Eka)
+- [ ] FR-11 UI tersambung ke backend
+
+**Prioritas 4 — verifikasi & artefak yang dinilai:**
+
+- [ ] `docker compose up` diuji **dari clone bersih di direktori baru**, oleh orang yang
+      bukan penulisnya
+- [ ] CI hijau di `main` — sampai sekarang belum pernah berjalan di remote
+- [ ] `docs/AI-DEVLOG.md`: **minimal 10 entri, minimal 3 kasus AI salah**, tersebar dua hari
+- [ ] `docs/AI-WORKFLOW.md` diisi
+- [ ] ADR yang mencatat penolakan saran AI (bonus +2) — kerangkanya ada di ADR-0002
+- [ ] `README.md` bagian 4 (status FR) dan bagian 5 (yang dibuang) diisi di Gate 3
+- [ ] Rotasi password Aiven
+- [ ] Kolom "Status latihan" di `DEMO-SCRIPT.md` diisi
+
+---
+
+## 5. Penelusuran Aturan Bisnis
 
 | BR | Ringkasan | Ditegakkan di | Test | Status |
 |---|---|---|---|---|
-| BR-01 | Plafon di luar Rp 5 juta – Rp 500 juta ditolak saat submit |  |  |  |
-| BR-02 | Approval berurutan; level 2 menunggu `APPROVE` level 1 |  |  |  |
-| BR-03 | Skoring butuh dokumen `VERIFIED` + survei `VALID` + SLIK sudah dijalankan |  |  |  |
-| BR-04 | Hasil SLIK berlaku 30 hari |  |  |  |
-| BR-05 | Grade 5 tidak dapat diajukan; `REJECTED_SCORING` |  |  |  |
-| BR-06 | Margin/nisbah di luar rentang grade diblokir |  |  |  |
-| BR-07 | Skor akhir = Σ(skor × bobot) ÷ Σbobot, dibulatkan sekali di akhir |  |  |  |
-| BR-08 | Rincian komponen ditampilkan dan disimpan |  |  |  |
-| BR-09 | Maker tidak boleh menjadi approver; ditegakkan di server |  |  |  |
-| BR-10 | Setiap perubahan status punya aktor + timestamp |  |  |  |
-| BR-11 | NIK & foto dokumen tidak muncul di log, pesan error, atau URL |  |  |  |
-| BR-12 | Nomor referensi `IMT-YYYYMMDD-NNNN` unik, tidak dipakai ulang |  |  |  |
+| BR-01 | Plafon Rp 5 jt – Rp 500 jt | `domain/plafon.ts` | `unit/margin-plafon.spec.ts` | ✅ |
+| BR-02 | Approval berurutan | `domain/approval.ts` | `unit/approval.spec.ts`, `integration/approval.spec.ts` | ✅ |
+| BR-03 | Prasyarat skoring | `domain/prasyarat-skoring.ts` | `integration/skoring-prasyarat.spec.ts` | ⚠️ ditegakkan, jalur skoring belum ada |
+| BR-04 | Masa berlaku SLIK 30 hari | `domain/prasyarat-skoring.ts` | **belum** | ❌ |
+| BR-05 | Grade 5 tidak dapat diajukan | `domain/grade.ts` | `unit/skoring.spec.ts` | ⚠️ domain saja |
+| BR-06 | Margin di luar rentang diblokir | `domain/margin.ts` | `unit/margin-plafon.spec.ts` | ⚠️ domain saja, endpoint belum ada |
+| BR-07 | Pembulatan sekali di akhir | `domain/skoring.ts` | `unit/skoring.spec.ts` | ✅ |
+| BR-08 | Rincian komponen disimpan | `domain/skoring.ts` + skema | **belum** | ❌ endpoint belum ada |
+| BR-09 | Maker ≠ approver | `domain/approval.ts` | `unit/approval.spec.ts`, `integration/approval.spec.ts` | ✅ |
+| BR-10 | Aktor + timestamp tiap perubahan | `services/status.service.ts` | `integration/audit.spec.ts` | ✅ |
+| BR-11 | NIK tidak ke log/error/URL | `lib/logger.ts` | **belum** | ❌ |
+| BR-12 | Nomor referensi unik | `domain/nomor-referensi.ts` | `unit/margin-plafon.spec.ts` | ✅ |
 
 ---
 
-## Ringkasan Risiko (perbarui di setiap gate)
+## 6. Ringkasan Risiko
 
-<!-- ISI: hitung dari tabel di atas. Tiga baris ini adalah versi paling berguna dari seluruh
-     dokumen ini, dan yang paling cepat menunjukkan posisi tim kepada diri sendiri. -->
-
-| Pertanyaan | Kamis 15.30 (Gate 2) | Jumat 11.20 (Gate 3) | Jumat 15.00 (code freeze) |
+| Pertanyaan | Kamis 15.30 (Gate 2) | Jumat 11.20 (Gate 3) | Jumat 15.00 |
 |---|---|---|---|
-| Berapa FR P0 berstatus Done? |  |  |  |
-| Berapa FR P0 tanpa file test? |  |  |  |
-| Berapa BR tanpa test? |  |  |  |
-| Berapa AC yang sudah pernah dilatih di demo? |  |  |  |
-| Risiko terbesar saat ini |  |  |  |
+| FR P0 berstatus Done | **6 dari 9** | | |
+| FR P0 tanpa file test | **3** (FR-05, 06, 07) | | |
+| BR tanpa test | **4** (BR-04, 08, 11, dan BR-06 hanya domain) | | |
+| AC yang sudah dilatih di demo | **0** | | |
+| Risiko terbesar | Empat FR menumpuk di satu orang, dan tidak satu pun pekerjaan ada di `main` | | |
