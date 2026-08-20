@@ -42,8 +42,6 @@ export class SlikService {
       data: {
         pengajuanAnggotaId,
         statusPanggilan: result.status,
-        // Tidak ada `?? 1`, tidak ada `|| 0`. Panggilan gagal berarti tidak ada
-        // kolektibilitas, dan prasyarat skoring akan menolaknya karena itu.
         kolektibilitas: result.data?.kolektibilitas ?? null,
         jumlahFasilitasAktif: result.data?.jumlahFasilitasAktif ?? null,
         totalBakiDebet: result.data?.totalBakiDebet ?? null,
@@ -57,3 +55,5 @@ export class SlikService {
     return result
   }
 }
+
+export const slikService = new SlikService()

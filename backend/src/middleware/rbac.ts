@@ -35,7 +35,7 @@ export function buatToken(pengguna: PenggunaToken): string {
   return jwt.sign(
     { sub: pengguna.id, peran: pengguna.peran, nama: pengguna.nama },
     env.jwtSecret,
-    { expiresIn: env.jwtExpiresIn },
+    { expiresIn: env.jwtExpiresIn as jwt.SignOptions['expiresIn'] },
   )
 }
 

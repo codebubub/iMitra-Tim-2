@@ -23,6 +23,9 @@ import { daftarNotifikasi, tandaiDibaca } from '../services/notifikasi.service.j
 import { daftarkanRouteDokumen } from './dokumen.js'
 import { daftarkanRouteSurvei } from './survei.js'
 import { daftarkanRouteApproval } from './approval.js'
+import { slikRoutes } from './slik.js'
+import { skoringRoutes } from './skoring.js'
+import { parameterRoutes } from './parameter.js'
 import { TidakTerautentikasi } from '../lib/errors.js'
 import type { Peran } from '../domain/approval.js'
 
@@ -324,4 +327,8 @@ export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
   //    routes/parameter.ts  FR-13
   //    routes/notifikasi.ts FR-11
   // =========================================================================
+
+  await slikRoutes(app)
+  await skoringRoutes(app)
+  await parameterRoutes(app)
 }
