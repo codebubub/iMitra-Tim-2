@@ -36,7 +36,7 @@ export class SlikClient {
       clearTimeout(timeoutId);
 
       if (res.status === 200) {
-        const data = await res.json();
+        const data = (await res.json()) as Record<string, unknown>;
         return {
           status: 'OK',
           data: {
@@ -55,12 +55,12 @@ export class SlikClient {
       }
 
       return { status: 'UNAVAILABLE', error: `HTTP_${res.status}` };
-    } catch (err: any) {
+    } catch (err) {
       clearTimeout(timeoutId);
-      if (err.name === 'AbortError') {
+      if (err instanceof Error && err.name === 'AbortError') {
         return { status: 'TIMEOUT', error: 'Timeout after ' + this.timeoutMs + 'ms' };
       }
-      return { status: 'UNAVAILABLE', error: err.message || 'Network error' };
+      return { status: 'UNAVAILABLE', error: err instanceof Error ? err.message : 'Network error' };
     }
   }
 }

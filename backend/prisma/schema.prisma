@@ -1,3 +1,20 @@
+// =============================================================================
+//  Skema iMitra — SATU sumber kebenaran untuk struktur database.
+//
+//  PEMILIK: Tech Lead (Ray). Lihat .github/CODEOWNERS.
+//  Kebutuhan tabel/kolom baru diajukan sebagai issue, bukan sebagai PR yang
+//  mengubah berkas ini — dua migrasi yang dibuat bersamaan akan membuat riwayat
+//  lima orang lain menyimpang.
+//
+//  Rujukan: docs/SDD-iMitra.md BAB 4.1 (daftar tabel dan alasan tiap kolom).
+//
+//  Dua hal yang SENGAJA tidak ada di sini, dan jangan ditambahkan:
+//    1. Kolom `total_plafon` pada `pengajuan` — dihitung dari anggota AKTIF saat
+//       dibaca (ADR-0002). Menyimpannya membuat AC-14 gagal.
+//    2. Kolom `level_approval_diperlukan` — sama, dihitung dari total plafon
+//       terhadap tabel ambang_approval.
+// =============================================================================
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,44 +24,457 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model pengguna {
-  id            String    @id @default(uuid())
-  username      String    @unique
-  nama          String
-  password_hash String
-  peran         String
-  aktif         Boolean   @default(true)
-  dibuat_pada   DateTime  @default(now()) @db.Timestamptz
+// ---------------------------------------------------------------------------
+//  Enum — nilainya wajib sama dengan AGENTS.md bagian 4.1.
+//  Menambah nilai di sini berarti memperbarui AGENTS.md 4.1, SRS 3.2, dan SDD 4.1.
+// ---------------------------------------------------------------------------
+
+enum Peran {
+  AO
+  ANL
+  KCP
+  KC
+  KOM
+  ADM
 }
 
-model pengajuan {
-  id                String    @id @default(uuid())
-  nomor_referensi   String    @unique
-  jenis_nasabah     String
-  akad              String
-  tenor_bulan       Int
-  status            String
-  dibuat_oleh       String
-  dibuat_pada       DateTime  @default(now()) @db.Timestamptz
+enum JenisNasabah {
+  PERORANGAN
+  KELOMPOK
 }
 
-model pengajuan_anggota {
-  id                  String    @id @default(uuid())
-  pengajuan_id        String
-  nasabah_id          String
-  plafon_diajukan     BigInt
-  status_anggota      String    @default("AKTIF")
-  urutan              Int
+enum Akad {
+  MURABAHAH
+  MUSYARAKAH
 }
 
-model hasil_slik {
-  id                     String    @id @default(uuid())
-  pengajuan_anggota_id   String
-  status_panggilan       String
-  kolektibilitas        Int?
-  jumlah_fasilitas_aktif Int?
-  total_baki_debet       BigInt?
-  tanggal_data           DateTime? @db.Date
-  reference_id           String?
-  diperiksa_pada         DateTime  @default(now()) @db.Timestamptz
+/// 15 status. Terminal: REJECTED_SLIK, REJECTED_SCORING, APPROVED, REJECTED.
+enum StatusPengajuan {
+  DRAFT
+  SUBMITTED
+  VERIFIKASI_DOKUMEN
+  DOKUMEN_DITOLAK
+  SLIK_OK
+  SLIK_GAGAL
+  REJECTED_SLIK
+  SKORED
+  REJECTED_SCORING
+  MENUNGGU_APPROVAL_L1
+  MENUNGGU_APPROVAL_L2
+  MENUNGGU_APPROVAL_L3
+  APPROVED
+  REJECTED
+  DIKEMBALIKAN
+}
+
+enum StatusAnggota {
+  AKTIF
+  DITOLAK
+}
+
+enum JenisDokumen {
+  KTP
+  KK
+  SKU
+}
+
+enum StatusDokumen {
+  MENUNGGU
+  VERIFIED
+  REJECTED
+}
+
+enum KodeAlasanDokumen {
+  BURAM
+  TIDAK_TERBACA
+  KADALUARSA
+  TIDAK_SESUAI_PEMOHON
+  BUKAN_JENIS_DOKUMEN
+}
+
+enum StatusSurvei {
+  DRAFT
+  VALID
+  TIDAK_VALID
+}
+
+/// Kegagalan panggilan SLIK direpresentasikan di sini, BUKAN dengan mengisi
+/// kolektibilitas dengan nilai default (BR wajib: kegagalan != SLIK bersih).
+enum StatusPanggilanSlik {
+  OK
+  NOT_FOUND
+  UNAVAILABLE
+  TIMEOUT
+}
+
+enum KeputusanApproval {
+  APPROVE
+  REJECT
+  RETURN
+}
+
+// ---------------------------------------------------------------------------
+//  Pengguna & nasabah
+// ---------------------------------------------------------------------------
+
+model Pengguna {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  nama         String
+  passwordHash String   @map("password_hash")
+  peran        Peran
+  aktif        Boolean  @default(true)
+  dibuatPada   DateTime @default(now()) @map("dibuat_pada")
+
+  pengajuanDibuat    Pengajuan[]         @relation("PembuatPengajuan")
+  keputusanApproval  KeputusanApprovalRow[]
+  auditTrail         AuditTrail[]
+  notifikasi         Notifikasi[]
+
+  @@map("pengguna")
+}
+
+model Nasabah {
+  id          String @id @default(uuid())
+  /// DATA PRIBADI (BR-11). Tidak boleh masuk log, pesan error, atau URL.
+  /// Gunakan id pengajuan untuk korelasi.
+  nik         String @unique @db.Char(16)
+  nama        String
+  alamat      String
+  jenisUsaha  String @map("jenis_usaha")
+
+  anggota PengajuanAnggota[]
+
+  @@map("nasabah")
+}
+
+// ---------------------------------------------------------------------------
+//  Pengajuan
+// ---------------------------------------------------------------------------
+
+model Pengajuan {
+  id              String          @id @default(uuid())
+  nomorReferensi  String          @unique @map("nomor_referensi")
+  jenisNasabah    JenisNasabah    @map("jenis_nasabah")
+  akad            Akad
+  tenorBulan      Int             @map("tenor_bulan")
+  status          StatusPengajuan @default(DRAFT)
+
+  /// Diisi FR-07 setelah lolos validasi rentang grade (BR-06).
+  marginPersen     Decimal? @map("margin_persen") @db.Decimal(5, 2)
+  nisbahBankPersen Decimal? @map("nisbah_bank_persen") @db.Decimal(5, 2)
+
+  /// Wajib terisi bila ada anggota berkolektibilitas 2 (Tabel 4.2).
+  catatanAnalis String? @map("catatan_analis")
+
+  dibuatOleh String   @map("dibuat_oleh")
+  pembuat    Pengguna @relation("PembuatPengajuan", fields: [dibuatOleh], references: [id])
+
+  dibuatPada  DateTime @default(now()) @map("dibuat_pada")
+  diubahPada  DateTime @updatedAt @map("diubah_pada")
+
+  anggota    PengajuanAnggota[]
+  survei     Survei[]
+  skoring    HasilSkoring[]
+  keputusan  KeputusanApprovalRow[]
+  audit      AuditTrail[]
+  notifikasi Notifikasi[]
+
+  @@index([status])
+  @@index([dibuatOleh])
+  @@map("pengajuan")
+}
+
+/// Perorangan = tepat satu baris. Majelis = 3-10 baris (ADR-0002, asumsi A-5).
+/// Tidak ada dua jalur kode: total plafon selalu SUM atas tabel ini.
+model PengajuanAnggota {
+  id             String        @id @default(uuid())
+  pengajuanId    String        @map("pengajuan_id")
+  nasabahId      String        @map("nasabah_id")
+  plafonDiajukan BigInt        @map("plafon_diajukan")
+  statusAnggota  StatusAnggota @default(AKTIF) @map("status_anggota")
+  urutan         Int
+
+  pengajuan Pengajuan @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+  nasabah   Nasabah   @relation(fields: [nasabahId], references: [id])
+
+  dokumen   Dokumen[]
+  hasilSlik HasilSlik[]
+
+  @@unique([pengajuanId, nasabahId])
+  @@index([pengajuanId])
+  @@map("pengajuan_anggota")
+}
+
+// ---------------------------------------------------------------------------
+//  Dokumen & survei
+// ---------------------------------------------------------------------------
+
+/// Dokumen melekat pada ANGGOTA, bukan pengajuan (asumsi A-9): majelis 4 anggota
+/// berarti 12 dokumen wajib.
+model Dokumen {
+  id                 String             @id @default(uuid())
+  pengajuanAnggotaId String             @map("pengajuan_anggota_id")
+  jenis              JenisDokumen
+  /// Naik setiap unggah ulang. Versi lama DISIMPAN, tidak ditimpa (AC-03).
+  versi              Int                @default(1)
+  /// UUID di volume upload. Tidak pernah masuk log atau URL (BR-11).
+  pathBerkas         String             @map("path_berkas")
+  mime               String
+  ukuranByte         Int                @map("ukuran_byte")
+  status             StatusDokumen      @default(MENUNGGU)
+  /// Wajib terisi bila status REJECTED.
+  kodeAlasan         KodeAlasanDokumen? @map("kode_alasan")
+  catatan            String?
+
+  diunggahOleh     String    @map("diunggah_oleh")
+  diunggahPada     DateTime  @default(now()) @map("diunggah_pada")
+  diverifikasiOleh String?   @map("diverifikasi_oleh")
+  diverifikasiPada DateTime? @map("diverifikasi_pada")
+
+  anggota PengajuanAnggota @relation(fields: [pengajuanAnggotaId], references: [id], onDelete: Cascade)
+
+  @@unique([pengajuanAnggotaId, jenis, versi])
+  @@index([pengajuanAnggotaId])
+  @@map("dokumen")
+}
+
+model Survei {
+  id          String  @id @default(uuid())
+  pengajuanId String  @map("pengajuan_id")
+  latitude    Decimal @db.Decimal(9, 6)
+  longitude   Decimal @db.Decimal(9, 6)
+  fotoPath    String  @map("foto_path")
+
+  /// Masukan komponen skor "kapasitas bayar".
+  omzetHarian     BigInt @map("omzet_harian")
+  /// Masukan komponen skor "lama usaha".
+  lamaUsahaBulan  Int    @map("lama_usaha_bulan")
+  /// 1-5, diisi ANL bukan AO (asumsi A-10). Masukan komponen "hasil survei".
+  kondisiUsahaSkala Int? @map("kondisi_usaha_skala")
+
+  catatan String
+  status  StatusSurvei @default(DRAFT)
+
+  direkamOleh String    @map("direkam_oleh")
+  direkamPada DateTime  @default(now()) @map("direkam_pada")
+  dinilaiOleh String?   @map("dinilai_oleh")
+  dinilaiPada DateTime? @map("dinilai_pada")
+
+  pengajuan Pengajuan @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+
+  @@index([pengajuanId, status])
+  @@map("survei")
+}
+
+// ---------------------------------------------------------------------------
+//  SLIK
+// ---------------------------------------------------------------------------
+
+/// Satu baris per PANGGILAN — berhasil maupun gagal. Tidak pernah ditimpa,
+/// sehingga riwayat percobaan bisa ditunjukkan saat demo jalur error.
+model HasilSlik {
+  id                 String              @id @default(uuid())
+  pengajuanAnggotaId String              @map("pengajuan_anggota_id")
+  statusPanggilan    StatusPanggilanSlik @map("status_panggilan")
+
+  /// NULL saat panggilan gagal. TIDAK ADA nilai default — kegagalan SLIK
+  /// bukan SLIK bersih.
+  kolektibilitas       Int?
+  jumlahFasilitasAktif Int?      @map("jumlah_fasilitas_aktif")
+  totalBakiDebet       BigInt?   @map("total_baki_debet")
+  /// Dasar perhitungan masa berlaku 30 hari (BR-04).
+  tanggalData          DateTime? @map("tanggal_data") @db.Date
+  referenceId          String?   @map("reference_id")
+
+  diperiksaOleh String   @map("diperiksa_oleh")
+  diperiksaPada DateTime @default(now()) @map("diperiksa_pada")
+
+  anggota PengajuanAnggota @relation(fields: [pengajuanAnggotaId], references: [id], onDelete: Cascade)
+
+  @@index([pengajuanAnggotaId, diperiksaPada])
+  @@map("hasil_slik")
+}
+
+// ---------------------------------------------------------------------------
+//  Skoring
+// ---------------------------------------------------------------------------
+
+model HasilSkoring {
+  id          String @id @default(uuid())
+  pengajuanId String @map("pengajuan_id")
+
+  /// Sudah dibulatkan, SEKALI, di akhir (BR-07).
+  skorAkhir   Int @map("skor_akhir")
+  /// Hasil murni perhitungan, sebelum lantai kol-2 dan sebelum override.
+  gradeSistem Int @map("grade_sistem")
+  /// Yang berlaku untuk FR-07. = max(gradeSistem, 3) bila kolektibilitas 2 (A-4).
+  gradeFinal  Int @map("grade_final")
+
+  diOverride     Boolean @default(false) @map("di_override")
+  alasanOverride String? @map("alasan_override")
+
+  /// Salinan parameter yang dipakai saat perhitungan ini. Supaya hasil lama tetap
+  /// bisa direkonstruksi setelah ADM mengubah bobot (ADR-0003).
+  snapshotParameter Json @map("snapshot_parameter")
+
+  dihitungOleh String   @map("dihitung_oleh")
+  dihitungPada DateTime @default(now()) @map("dihitung_pada")
+
+  pengajuan Pengajuan               @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+  rincian   RincianKomponenSkor[]
+
+  @@index([pengajuanId, dihitungPada])
+  @@map("hasil_skoring")
+}
+
+/// Empat baris per skoring. WAJIB disimpan, bukan hanya skor akhir (BR-08) —
+/// analis harus bisa merekonstruksi angkanya di depan auditor.
+model RincianKomponenSkor {
+  id             String  @id @default(uuid())
+  hasilSkoringId String  @map("hasil_skoring_id")
+  kodeKomponen   String  @map("kode_komponen")
+  /// Nilai bobot SAAT ITU, bukan referensi ke tabel parameter.
+  bobot          Decimal @db.Decimal(6, 3)
+  nilaiMentah    Decimal @map("nilai_mentah") @db.Decimal(14, 3)
+  /// Desimal, TIDAK dibulatkan (asumsi A-3). Pembulatan hanya di skor akhir.
+  skorKomponen   Decimal @map("skor_komponen") @db.Decimal(6, 3)
+  kontribusi     Decimal @db.Decimal(9, 3)
+
+  hasilSkoring HasilSkoring @relation(fields: [hasilSkoringId], references: [id], onDelete: Cascade)
+
+  @@index([hasilSkoringId])
+  @@map("rincian_komponen_skor")
+}
+
+// ---------------------------------------------------------------------------
+//  Approval & audit
+// ---------------------------------------------------------------------------
+
+model KeputusanApprovalRow {
+  id          String            @id @default(uuid())
+  pengajuanId String            @map("pengajuan_id")
+  level       Int
+  peranWajib  Peran             @map("peran_wajib")
+  keputusan   KeputusanApproval
+  /// Wajib untuk REJECT dan RETURN.
+  alasan      String?
+
+  /// Dibandingkan dengan pengajuan.dibuatOleh untuk menegakkan BR-09.
+  diputuskanOleh String   @map("diputuskan_oleh")
+  diputuskanPada DateTime @default(now()) @map("diputuskan_pada")
+
+  pengajuan Pengajuan @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+  aktor     Pengguna  @relation(fields: [diputuskanOleh], references: [id])
+
+  @@index([pengajuanId, level])
+  @@map("keputusan_approval")
+}
+
+/// APPEND-ONLY (FR-09, AC-13). Tiga lapis penjagaan:
+///   1. tidak ada route PUT/PATCH/DELETE untuk audit
+///   2. audit.repo.ts hanya mengekspor tulis() dan cari()
+///   3. migrasi terakhir menjalankan REVOKE UPDATE, DELETE dari peran aplikasi
+model AuditTrail {
+  id          BigInt   @id @default(autoincrement())
+  pengajuanId String?  @map("pengajuan_id")
+  aktorId     String?  @map("aktor_id")
+  /// Disalin, bukan join — peran seseorang bisa berubah setelah keputusan diambil.
+  aktorPeran  String   @map("aktor_peran")
+  aksi        String
+  statusSebelum String? @map("status_sebelum")
+  statusSesudah String? @map("status_sesudah")
+  /// TANPA NIK, nama nasabah, atau path berkas (BR-11).
+  metadata    Json     @default("{}")
+  terjadiPada DateTime @default(now()) @map("terjadi_pada")
+
+  pengajuan Pengajuan? @relation(fields: [pengajuanId], references: [id])
+  aktor     Pengguna?  @relation(fields: [aktorId], references: [id])
+
+  @@index([pengajuanId, terjadiPada])
+  @@index([aksi])
+  @@map("audit_trail")
+}
+
+// ---------------------------------------------------------------------------
+//  Parameter — WAJIB data, bukan konstanta (FR-13, AC-15, ADR-0003)
+// ---------------------------------------------------------------------------
+
+model ParameterSkoring {
+  id    String   @id @default(uuid())
+  kode  String   @unique
+  nama  String
+  /// Terisi untuk 4 komponen skor; NULL untuk parameter skalar.
+  bobot Decimal? @db.Decimal(6, 3)
+  /// Terisi untuk parameter skalar (MARGIN_REFERENSI_SKORING, dll).
+  nilai Decimal? @db.Decimal(14, 3)
+  /// Titik linear, mis. {"penuh": 30, "nol": 60} untuk kapasitas bayar.
+  aturan Json?
+
+  diubahOleh String?  @map("diubah_oleh")
+  diubahPada DateTime @updatedAt @map("diubah_pada")
+
+  @@map("parameter_skoring")
+}
+
+model AmbangApproval {
+  id          String   @id @default(uuid())
+  plafonMin   BigInt   @map("plafon_min")
+  plafonMaks  BigInt   @map("plafon_maks")
+  /// Panjang array = jumlah level. Mis. {KCP,KC} berarti 2 level berjenjang.
+  urutanPeran Peran[]  @map("urutan_peran")
+
+  diubahOleh String?  @map("diubah_oleh")
+  diubahPada DateTime @updatedAt @map("diubah_pada")
+
+  @@map("ambang_approval")
+}
+
+model RentangMargin {
+  id        String   @id @default(uuid())
+  grade     Int      @unique
+  /// Dipakai juga untuk MENURUNKAN grade dari skor — satu sumber, bukan dua.
+  skorMin   Int      @map("skor_min")
+  skorMaks  Int      @map("skor_maks")
+  marginMin Decimal? @map("margin_min") @db.Decimal(5, 2)
+  marginMaks Decimal? @map("margin_maks") @db.Decimal(5, 2)
+  nisbahMin  Decimal? @map("nisbah_min") @db.Decimal(5, 2)
+  nisbahMaks Decimal? @map("nisbah_maks") @db.Decimal(5, 2)
+  /// false untuk grade 5 (BR-05).
+  dibiayai   Boolean  @default(true)
+
+  diubahOleh String?  @map("diubah_oleh")
+  diubahPada DateTime @updatedAt @map("diubah_pada")
+
+  @@map("rentang_margin")
+}
+
+// ---------------------------------------------------------------------------
+//  Notifikasi & penghitung nomor referensi
+// ---------------------------------------------------------------------------
+
+model Notifikasi {
+  id          String   @id @default(uuid())
+  penggunaId  String   @map("pengguna_id")
+  pengajuanId String?  @map("pengajuan_id")
+  /// Tanpa data pribadi.
+  pesan       String
+  dibaca      Boolean  @default(false)
+  dibuatPada  DateTime @default(now()) @map("dibuat_pada")
+
+  pengguna  Pengguna   @relation(fields: [penggunaId], references: [id], onDelete: Cascade)
+  pengajuan Pengajuan? @relation(fields: [pengajuanId], references: [id])
+
+  @@index([penggunaId, dibaca])
+  @@map("notifikasi")
+}
+
+/// Penghitung harian untuk IMT-YYYYMMDD-NNNN (BR-12). Dinaikkan dengan
+/// SELECT ... FOR UPDATE di dalam transaksi pembuatan pengajuan, sehingga nomor
+/// tidak pernah dipakai ulang walaupun dua AO submit bersamaan.
+model UrutanReferensi {
+  tanggal        String @id @db.Char(8)
+  urutanTerakhir Int    @default(0) @map("urutan_terakhir")
+
+  @@map("urutan_referensi")
 }

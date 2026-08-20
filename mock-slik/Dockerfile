@@ -1,14 +1,18 @@
-FROM node:20-alpine AS builder
+# Mock SLIK — layanan terpisah, dipanggil backend via HTTP (brief 7.2 butir 3).
+FROM node:20-alpine AS build
 WORKDIR /app
-COPY package.json tsconfig.json ./
+COPY package*.json ./
+RUN npm ci
+COPY tsconfig.json ./
 COPY src ./src
-RUN npm ci && npm run build
+RUN npm run build
 
-FROM node:20-alpine
+FROM node:20-alpine AS runtime
 WORKDIR /app
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY package.json ./
-ENV PORT=9090
+ENV NODE_ENV=production
+# wget dipakai healthcheck di docker-compose.yml. Ia sudah ada di image alpine.
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+COPY --from=build /app/dist ./dist
 EXPOSE 9090
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/server.js"]

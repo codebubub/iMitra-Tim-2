@@ -1,7 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify'
 import cors from '@fastify/cors'
 import { env } from './config/env.js'
-import { logger } from './lib/logger.js'
+import { opsiLogger } from './lib/logger.js'
 import { penanganGalat } from './middleware/error.js'
 import { daftarRoute, pastikanSemuaRouteBerperan, penjagaPeran } from './middleware/rbac.js'
 import { daftarkanRoute } from './routes/index.js'
@@ -13,7 +13,7 @@ import { daftarkanRoute } from './routes/index.js'
  */
 export async function buatApp(): Promise<FastifyInstance> {
   const app = Fastify({
-    loggerInstance: logger,
+    logger: opsiLogger,
     /**
      * Fastify mencatat body request pada level debug secara bawaan, dan body
      * pengajuan memuat NIK. Pencatatan otomatis dimatikan (BR-11); korelasi
