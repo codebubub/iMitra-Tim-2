@@ -2,6 +2,7 @@ import type { StatusPengajuan } from '@prisma/client'
 import type { PrismaTx } from '../lib/prisma.js'
 import { TransisiTidakSah } from '../lib/errors.js'
 import { tulisAudit, AKSI } from './audit.service.js'
+import { beriTahuPerubahanStatus } from './notifikasi.service.js'
 import type { PenggunaToken } from '../middleware/rbac.js'
 
 /**
@@ -79,9 +80,10 @@ export async function ubahStatus(
 
   if (!transisiSah(dari, ke)) throw new TransisiTidakSah(dari, ke)
 
-  await tx.pengajuan.update({
+  const pengajuan = await tx.pengajuan.update({
     where: { id: pengajuanId },
     data: { status: ke },
+    select: { nomorReferensi: true, dibuatOleh: true },
   })
 
   await tulisAudit(tx, {
@@ -92,5 +94,16 @@ export async function ubahStatus(
     statusSebelum: dari,
     statusSesudah: ke,
     metadata: { sebab, ...(metadata ?? {}) },
+  })
+
+  // FR-11. Sengaja di dalam transaksi yang sama: kalau perubahan status batal,
+  // notifikasinya ikut batal. Memberi tahu orang tentang perubahan yang tidak
+  // jadi terjadi lebih buruk daripada tidak memberi tahu sama sekali.
+  await beriTahuPerubahanStatus(tx, {
+    pengajuanId,
+    nomorReferensi: pengajuan.nomorReferensi,
+    dibuatOleh: pengajuan.dibuatOleh,
+    ke,
+    aktorId: aktor.id,
   })
 }
