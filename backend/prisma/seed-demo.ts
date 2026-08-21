@@ -118,7 +118,25 @@ async function buatPengajuanDemo(
 ): Promise<string | null> {
   const nomorReferensi = `IMT-${kunciTanggalHariIni()}-${String(spek.urutan).padStart(4, '0')}`
 
-  const sudahAda = await prisma.pengajuan.findUnique({ where: { nomorReferensi } })
+  /**
+   * Idempotensi dikunci pada PENANDA DEMO, bukan pada nomor referensi.
+   *
+   * Nomor referensi memuat tanggal (IMT-YYYYMMDD-NNNN), sehingga memeriksa
+   * nomor berarti seed menganggap data hari ini belum ada — dan membuat lima
+   * pengajuan baru setiap hari. Setelah dua hari sudah ada sepuluh; pada hari
+   * demo akan ada lima belas, dan penilai melihat daftar yang membingungkan.
+   *
+   * Penanda `untukAC` disimpan di metadata baris audit pertama setiap pengajuan
+   * demo, jadi ia bertahan lintas tanggal dan tidak bergantung pada nomor.
+   */
+  const sudahAda = await prisma.auditTrail.findFirst({
+    where: {
+      aksi: 'UBAH_STATUS',
+      statusSesudah: 'DRAFT',
+      metadata: { path: ['untukAC'], equals: spek.untukAC },
+    },
+    select: { id: true },
+  })
   if (sudahAda) return null
 
   const totalPlafon = spek.anggota.reduce((s, a) => s + a.plafon, 0)

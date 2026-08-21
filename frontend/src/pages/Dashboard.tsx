@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { api, rupiah } from '../api/client'
 import { BadgeStatus } from '../components/Badge'
 
@@ -65,7 +66,9 @@ export function Dashboard() {
                 <tbody>
                   {data.map((p) => (
                     <tr key={p.id}>
-                      <td className="mono">{p.nomorReferensi}</td>
+                      <td className="mono">
+                        <Link to={`/pengajuan/${p.id}`}>{p.nomorReferensi}</Link>
+                      </td>
                       <td>
                         {p.jenisNasabah === 'KELOMPOK'
                           ? `Kelompok - ${p.jumlahAnggota} anggota`

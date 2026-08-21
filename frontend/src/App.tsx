@@ -5,6 +5,7 @@ import { Penjaga } from './auth/Penjaga'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import { Pengajuan } from './pages/Pengajuan'
+import { DetailPengajuan } from './pages/DetailPengajuan'
 import { BuatPengajuan } from './pages/BuatPengajuan'
 import { UploadDokumen } from './pages/UploadDokumen'
 import { VerifikasiDokumen } from './pages/VerifikasiDokumen'
@@ -80,6 +81,14 @@ export function App() {
               element={
                 <Penjaga>
                   <AuditTrail />
+                </Penjaga>
+              }
+            />
+            <Route
+              path="/pengajuan/:id"
+              element={
+                <Penjaga>
+                  <DetailPengajuan />
                 </Penjaga>
               }
             />
