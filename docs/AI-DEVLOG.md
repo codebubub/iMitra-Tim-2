@@ -309,29 +309,114 @@ yang bisa diulang orang lain.
   melainkan keempat gerbang hijau DAN test terbukti gagal saat kodenya salah.
   Sabotase terkontrol adalah cara termurah membuktikan yang terakhir.
 
-### [DEVLOG-04] `<!-- ISI: judul -->` (FR-`<!-- ISI -->`)
-- **Waktu**:
-- **Oleh**:
-- **Tool/Model**:
-- **Tugas**:
-- **Cara memberi konteks**:
-- **Keluaran AI**:
-- **Yang salah**:
-- **Cara verifikasi**:
-- **Tindakan**:
-- **Pelajaran**:
+### [DEVLOG-04] Klien survei mengarang field `fotoUrl` & bentuk multipart yang tidak ada di kontrak (FR-04) — kasus AI salah
+- **Waktu**: 2026-08-21 08:35
+- **Oleh**: Ray
+- **Tool/Model**: 9Router → Claude Opus (mode agent dengan akses tulis ke repo)
+- **Tugas**: Menyelaraskan modul `src/api/survei.ts` + layar S-07 (Rekam & Nilai
+  Survei, FR-04) ke endpoint survei Dani yang kini sudah ada di `main`
+  (`routes/survei.ts`, `services/survei.service.ts`). Layar ini semula dibangun
+  mendahului backend (jalur R-3), jadi tugasnya memverifikasi klien terhadap
+  kontrak yang sekarang nyata, bukan terhadap asumsi lama.
+- **Cara memberi konteks**: melampirkan `routes/survei.ts` (skema zod `skemaRekam`
+  + `skemaNilai`), `services/survei.service.ts` (bentuk respons `daftarSurvei`),
+  model `Survei` di `schema.prisma`, dan AGENTS.md bagian 6 butir 1 (jangan tambah
+  dependensi — jadi tidak boleh pakai pustaka multipart). Batasan eksplisit:
+  foto lewat base64 di JSON, BR-11 (path/URL foto bukan data pribadi di daftar).
+- **Keluaran AI**: modul `survei.ts` versi awal — tipe `Survei` memuat
+  `fotoUrl: string[]`, fungsi `rekamSurvei` mengirim `multipart/form-data`
+  (FormData dengan `File[]` dan koordinat opsional `number | null`), dan layar
+  ANL merender galeri `survei.fotoUrl.map(...)`. `tsc -b`, `eslint`, `vite build`
+  semuanya hijau.
+- **Yang salah**: dua kesalahan yang saling menutupi sehingga tampak benar.
+  **(1)** `GET /api/pengajuan/{id}/survei` (`daftarSurvei`) **tidak pernah
+  mengembalikan `fotoUrl`** — server hanya mengirim fakta terukur (lat, lng,
+  omzet, lama usaha, skala, status). Tidak ada endpoint pengambilan foto survei
+  sama sekali. AI mengarang field itu karena "layar survei tentu menampilkan
+  foto" terdengar masuk akal, dan karena `string[]` yang kosong tidak pernah
+  memicu galat tipe. **(2)** `rekamSurvei` mengirim multipart, padahal
+  `skemaRekam` mewajibkan JSON `{ fotoBase64, fotoMime, latitude, longitude,
+  catatan }` — SATU foto base64, koordinat & catatan WAJIB (`z.number()`,
+  `.min(1)`), bukan `File[]` opsional. Semua lolos typecheck karena kliennya
+  konsisten dengan dirinya sendiri; kesalahannya murni terhadap kontrak server.
+  Yang membuatnya lolos perhatian: build hijau + bentuk lama (multipart, foto
+  jamak) adalah pola "wajar" untuk unggah foto, jadi tidak ada yang tampak aneh
+  saat dibaca sekilas.
+- **Cara verifikasi**: review kontrak baris-demi-baris SEBELUM merge — membuka
+  `routes/survei.ts` dan `services/survei.service.ts` di sebelah `survei.ts`,
+  lalu mencocokkan tiap field permintaan ke `skemaRekam` dan tiap field respons
+  ke objek yang benar-benar dikembalikan service. `fotoUrl` tidak ada padanannya
+  di service → ketahuan karangan. `rekamSurvei` mengirim FormData sedangkan route
+  memanggil `skemaRekam.parse(req.body)` atas JSON → setiap submit akan 400.
+  Ketahuan lewat review kontrak, BUKAN lewat test dan bukan lewat menjalankan
+  aplikasi (endpoint-nya belum pernah dipanggil dari layar ini secara live).
+- **Tindakan**: menulis ulang `survei.ts` ke kontrak nyata — hapus `fotoUrl`,
+  `rekamSurvei` kirim JSON base64 via helper `api()`, koordinat jadi `number`
+  wajib. Layar ANL: blok galeri `fotoUrl` dihapus (kalau dibiarkan,
+  `survei.fotoUrl.length` meng-crash layar karena field-nya `undefined` saat
+  runtime). Menambah util `src/api/berkas.ts` (`fileKeBase64`) tanpa menyentuh
+  `client.ts` milik Reffa. `bolehKirimSurvei` diperketat mewajibkan koordinat,
+  dengan test batas dari AC-04. Commit f65b6c9; keempat gerbang hijau ulang.
+- **Pelajaran**: field yang "sepertinya pasti ada" adalah tempat paling rawan AI
+  berhalusinasi, dan tipe `array`/optional menyembunyikannya dari typecheck
+  karena nilai kosong selalu valid secara tipe. Untuk klien yang dibangun
+  mendahului endpoint (R-3), sumber kebenaran adalah objek yang benar-benar
+  di-`return` service dan skema zod route — bukan nama field yang terdengar
+  wajar. Membaca respons service, bukan mengarang bentuknya, sekarang jadi
+  langkah wajib sebelum saya sebut sebuah layar "tersambung".
 
-### [DEVLOG-05] `<!-- ISI: judul -->` (FR-`<!-- ISI -->`)
-- **Waktu**:
-- **Oleh**:
-- **Tool/Model**:
-- **Tugas**:
-- **Cara memberi konteks**:
-- **Keluaran AI**:
-- **Yang salah**:
-- **Cara verifikasi**:
-- **Tindakan**:
-- **Pelajaran**:
+### [DEVLOG-05] `ubahAnggota` mengirim field `nama` yang di-drop diam-diam oleh skema route (FR-02, FR-10) — kasus AI salah
+- **Waktu**: 2026-08-21 08:42
+- **Oleh**: Ray
+- **Tool/Model**: 9Router → Claude Opus (mode agent dengan akses tulis ke repo)
+- **Tugas**: Menyelaraskan sisa modul `src/api/pengajuan.ts` ke kontrak backend
+  yang sudah di-`main`, termasuk `ubahAnggota` untuk `PATCH
+  /api/pengajuan/{id}/anggota/{anggotaId}` (ubah anggota majelis saat DRAFT,
+  FR-10 / AC-14).
+- **Cara memberi konteks**: melampirkan `routes/index.ts` (skema `skemaUbahAnggota`
+  + pendaftaran route PATCH anggota) dan `services/pengajuan.service.ts` (fungsi
+  `ubahAnggota` dan nilai yang dikembalikannya), plus SDD BAB 5 baris endpoint
+  anggota. Batasan: bentuk permintaan harus persis skema zod route, jangan
+  menambah field yang tak diterima server.
+- **Keluaran AI**: tipe klien `ubahAnggota(id, anggotaId, input:
+  Partial<Pick<AnggotaBaru,'nama'|'plafonDiajukan'>>)` yang mengembalikan
+  `Anggota` penuh — jadi pemanggil boleh mengirim `{ nama }`, `{ plafonDiajukan }`,
+  atau keduanya. `tsc -b` dan `eslint` hijau.
+- **Yang salah**: `skemaUbahAnggota` di route HANYA
+  `z.object({ plafonDiajukan: z.number().int().positive() })` — dan **tidak
+  `.strict()`** (berbeda dari `skemaUbahPengguna` yang `.strict()` di berkas yang
+  sama). Konsekuensinya field `nama` yang dikirim klien **tidak ditolak, tetapi
+  dibuang diam-diam** oleh zod: server balas 200, tetapi nama tidak pernah
+  berubah. Ini justru lebih berbahaya daripada 400 — panggilan "berhasil",
+  UI-nya akan tampak sukses, dan nama yang salah tetap tersimpan tanpa ada galat
+  yang menunjuk penyebabnya. Selain itu service hanya mengembalikan ringkasan
+  `{ id, plafonDiajukan }`, bukan `Anggota` penuh seperti tipe klien mengklaim.
+  Yang membuatnya lolos perhatian: `.strict()` tidak wajib di zod, jadi tanpa
+  membuka berkas route mustahil menebak field asing akan di-drop; dan karena
+  fungsi ini **belum dipakai satu layar pun** (S-03 saat ini membangun ulang
+  seluruh anggota lewat POST, bukan PATCH per field), bug-nya laten — tidak ada
+  test maupun layar yang akan memicunya, jadi ia bisa hidup sampai orang lain
+  memakainya berbulan kemudian.
+- **Cara verifikasi**: review kontrak baris-demi-baris SEBELUM merge — membandingkan
+  tipe `input` klien dengan `skemaUbahAnggota` dan tipe kembalian dengan nilai
+  `return` service. Perbedaan `nama` (ada di klien, tidak ada di skema) langsung
+  terlihat; lalu saya cek apakah skema `.strict()` — ternyata tidak, jadi
+  perilakunya "diterima lalu dibuang", bukan "ditolak". Ketahuan lewat review
+  kontrak, bukan test/aplikasi — memang tidak akan tertangkap test karena tidak
+  ada pemanggil, itulah kenapa saya catat sebagai bug laten, bukan bug aktif.
+- **Tindakan**: mempersempit tipe klien menjadi `input: { plafonDiajukan: number }`
+  dan tipe kembalian menjadi ringkasan `{ id, plafonDiajukan; urutan? }` yang
+  benar-benar dikirim server, dengan komentar bahwa endpoint ini tidak mendukung
+  ubah nama. Perubahan nasabah (nama) memang bukan kapabilitas endpoint ini —
+  kalau kelak dibutuhkan, itu perubahan skema milik Dani + Firman, saya cukup
+  menandainya, bukan menambalnya di klien. Commit dcf0e21.
+- **Pelajaran**: zod tanpa `.strict()` menerima-lalu-membuang field asing, jadi
+  "server balas 200" TIDAK membuktikan permintaan saya benar. Klien harus dibentuk
+  dari skema route yang sebenarnya, bukan dari tipe domain (`AnggotaBaru`) yang
+  kebetulan punya lebih banyak field. Dan bug pada kode yang belum dipakai tetap
+  bug — justru yang paling licin, karena tak ada test yang menabraknya; menyempitkan
+  tipe klien sekarang mencegah pemanggil pertama kelak menulis `{ nama }` dan
+  mengira itu berhasil.
 
 ### [DEVLOG-06] `<!-- ISI: judul -->` (FR-`<!-- ISI -->`)
 - **Waktu**:
