@@ -35,6 +35,7 @@
 | 2026-08-20 09:45 | Tech Lead | Versi awal dari template hackathon | — |
 | 2026-08-20 10:30 | Tech Lead | Isi bagian 2 (stack Node/TS/Fastify/Prisma/React), bagian 3 (struktur direktori + aturan lapisan), bagian 4.1 (konvensi + 15 nilai enum status), bagian 5.1 (nama tabel parameter + 4 parameter asumsi), bagian 7 (perintah test & lint) | ADR-0001, ADR-0002, ADR-0003 |
 | 2026-08-20 13:50 | Firman | Isi bagian 4.3 (bentuk galat, 422 untuk BR, 502 untuk SLIK), lokasi penegakan BR-01/10/11/12, dan larangan 16–19 | FR-01, FR-09; temuan lapis ke-3 AC-13 tidak berfungsi |
+| 2026-08-21 16:20 | Firman | Bagian 4.2: larangan mutlak push ke `main` diganti izin bersyarat (harus diminta Tech Lead di sesi itu + wajib hijau lebih dulu). Larangan commit atas nama orang lain **tidak** dilonggarkan | Aturan tidak cocok dengan praktik: integrasi memang lewat merge langsung ke `main`, dan `main` tidak diproteksi di GitHub |
 | `<!-- ISI -->` | `<!-- ISI -->` | `<!-- ISI: larangan baru setelah AI melanggar sesuatu -->` | `<!-- ISI: DEVLOG-xx -->` |
 
 ---
@@ -237,11 +238,27 @@ chore(ci): sesuaikan workflow ke stack terpilih
 Aturan tambahan:
 
 - Setiap PR menyebut issue-nya: `Closes #12`.
-- Satu issue = satu branch = satu PR.
-- Agent tidak boleh membuat commit atas nama orang lain, dan tidak boleh melakukan
-  `git push` ke `main`. `main` dilindungi.
+- Satu issue = satu branch = satu PR — **untuk pekerjaan fitur milik anggota**.
+- **Agent tidak boleh membuat commit atas nama orang lain.** Ini tidak dilonggarkan:
+  jejak siapa menulis apa adalah dasar seluruh penilaian dan seluruh audit.
+- **Agent boleh `git push` ke `main` hanya bila Tech Lead memintanya secara eksplisit
+  di sesi itu juga.** Tidak ada izin yang berlaku terus-menerus: permintaan di satu
+  sesi tidak menjadi izin untuk sesi berikutnya. Tanpa permintaan itu, agent berhenti
+  di commit lokal atau mendorong ke branch, lalu melapor.
+- **Sebelum push ke `main`, agent wajib membuktikan hijau lebih dulu** — typecheck,
+  lint, dan test pada paket yang tersentuh. Push yang membuat `main` merah lebih mahal
+  daripada push yang tertunda; CI merah di tag `v1.0.0` dikenai pengurangan −5.
 - Kalau perubahan berasal dari sesi AI, PR wajib menyebut nomor entri devlog
   (`DEVLOG-xx`) di bagian AI pada template PR.
+
+> **Kenapa larangan mutlak sebelumnya dilonggarkan.** Berkas ini semula menyatakan
+> `main` dilindungi dan agent tidak boleh mendorong ke sana sama sekali. Praktik nyata
+> tim berbeda: integrasi dilakukan dengan merge langsung ke `main` dari branch per
+> anggota, `main` tidak pernah benar-benar diproteksi di GitHub, dan Tech Lead memang
+> meminta agent melakukan push itu. Aturan yang rutin dilanggar lebih buruk daripada
+> tidak ada aturan — ia melatih orang mengabaikan seluruh berkas ini. Yang ditahan
+> sekarang bukan push-nya, melainkan **push tanpa diminta** dan **push tanpa bukti
+> hijau**, karena dua itulah yang benar-benar merusak.
 
 ### 4.3 Error Handling
 
