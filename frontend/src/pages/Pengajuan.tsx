@@ -48,7 +48,9 @@ export function Pengajuan() {
             <tbody>
               {data.map((p) => (
                 <tr key={p.id}>
-                  <td data-label="Nomor Referensi" className="mono">{p.nomorReferensi}</td>
+                  <td data-label="Nomor Referensi" className="mono">
+                    <Link to={`/pengajuan/${p.id}`}>{p.nomorReferensi}</Link>
+                  </td>
                   <td data-label="Nasabah">{p.jenisNasabah === 'KELOMPOK' ? `Kelompok` : p.nomorReferensi}</td>
                   <td data-label="Akad">{p.akad}</td>
                   <td data-label="Total Plafon" className="angka">{rupiah(p.totalPlafon)}</td>

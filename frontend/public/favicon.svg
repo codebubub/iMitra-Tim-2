@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="iMitra">
+  <!--
+    Ikon tab. Bentuknya sama dengan ikon "logo" di src/components/Ikon.tsx:
+    kotak dengan dua sisi seimbang yang dihubungkan satu palang — bagi hasil.
+
+    SVG, bukan .ico. Satu berkas 400 byte tajam di semua kerapatan layar,
+    sementara .ico memerlukan beberapa ukuran raster yang harus dibuat ulang
+    setiap kali lambangnya berubah. Browser yang tidak mendukungnya (hanya
+    Safari lama) sekadar tidak menampilkan ikon — bukan menampilkan yang rusak.
+  -->
+  <rect width="32" height="32" rx="8" fill="#0a4c41" />
+  <g fill="none" stroke="#f0dcb4" stroke-width="2.4" stroke-linecap="round">
+    <path d="M11 22V10M21 22V10M11 16h10" />
+  </g>
+</svg>

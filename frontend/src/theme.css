@@ -36,9 +36,16 @@
   --warna-primer: #0f6b5c;
   --warna-primer-hover: #0b564a;
   --warna-primer-lembut: #e6f0ee;
+  /* Bidang topnav. Lebih gelap daripada warna primer supaya teks putih di
+     atasnya lolos kontras 4.5:1, dan supaya tombol primer tetap terbaca
+     sebagai aksi ketika kebetulan berdampingan dengan topnav. */
+  --warna-primer-gelap: #0a4c41;
   --warna-aksen: #c08a2e;
+  --warna-aksen-muda: #f0dcb4;
 
-  --warna-latar: #f7f8f7;
+  /* Sedikit lebih gelap dan sedikit lebih hijau daripada #f7f8f7. Bedanya kecil,
+     tetapi cukup untuk membuat kartu putih benar-benar terbaca sebagai kartu. */
+  --warna-latar: #eef1f0;
   --warna-permukaan: #ffffff;
   --warna-permukaan-alt: #fbfcfb;
   --warna-garis: #e3e6e4;
@@ -89,8 +96,23 @@
    */
   --tinggi-sentuh: 44px;
 
-  /* Bayangan hanya untuk lapisan yang benar-benar melayang (drawer, dropdown) */
+  /*
+   * TANGGA BAYANGAN.
+   *
+   * Versi sebelumnya sengaja tanpa bayangan sama sekali — garis 1px dianggap
+   * lebih tenang. Hasilnya justru sebaliknya: kartu putih di atas latar yang
+   * hampir putih tidak punya batas yang terasa, dan seluruh halaman terbaca
+   * sebagai satu lapis datar. Yang hilang bukan hiasan, melainkan HIERARKI —
+   * mata tidak tahu mana yang di depan dan mana yang di belakang.
+   *
+   * Ketiganya sengaja sangat halus dan berwarna hijau kehitaman (bukan hitam
+   * netral), supaya bayangannya terbaca sebagai bagian dari palet, bukan
+   * sebagai kotoran abu-abu.
+   */
+  --bayang-kartu: 0 1px 2px rgba(22, 33, 30, 0.05), 0 1px 3px rgba(22, 33, 30, 0.04);
+  --bayang-angkat: 0 2px 4px rgba(22, 33, 30, 0.06), 0 4px 12px rgba(22, 33, 30, 0.07);
   --bayang-melayang: 0 12px 32px rgba(22, 33, 30, 0.18);
+  --bayang-topnav: 0 1px 3px rgba(10, 76, 65, 0.28);
   --bayang-lekat: 0 1px 0 var(--warna-garis);
 
   --transisi: 140ms ease;
@@ -106,6 +128,20 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+/*
+ * Topnav lengket menutupi 56px teratas viewport. Tanpa scroll-padding, apa pun
+ * yang digulir ke dalam pandangan — tautan yang dituju anchor, elemen yang
+ * difokus dengan Tab, baris tabel yang dicari — berhenti TEPAT DI BAWAH tepi
+ * atas, yaitu tersembunyi di balik topnav.
+ *
+ * Ini bukan cacat kosmetik: elemen yang tertutup topnav tidak bisa diklik sama
+ * sekali, karena klik mendarat di topnav. Ditemukan saat uji otomatis mencoba
+ * menekan tautan pada baris tabel dan gagal berulang kali tanpa pesan galat.
+ */
+html {
+  scroll-padding-top: calc(var(--tinggi-topbar) + var(--sp-2));
 }
 
 body {
@@ -245,7 +281,14 @@ a:focus-visible,
   border: 1px solid var(--warna-garis);
   border-radius: var(--radius-kartu);
   padding: var(--sp-5);
-  /* Sengaja tanpa shadow: garis 1px lebih tenang dan lebih padat */
+  box-shadow: var(--bayang-kartu);
+}
+/* Kartu yang menaut ke suatu tempat terangkat saat disentuh kursor, sehingga
+   "bisa diklik" tidak perlu diberitahukan lewat teks tambahan. */
+a.kartu:hover,
+button.kartu:hover {
+  box-shadow: var(--bayang-angkat);
+  border-color: var(--warna-garis-kuat);
 }
 
 .tombol {
@@ -264,8 +307,9 @@ a:focus-visible,
   cursor: pointer;
   background: var(--warna-primer);
   color: #fff;
+  box-shadow: var(--bayang-kartu);
   transition: background var(--transisi), border-color var(--transisi),
-    color var(--transisi);
+    color var(--transisi), box-shadow var(--transisi);
 }
 .tombol:hover:not(:disabled) {
   background: var(--warna-primer-hover);
@@ -383,6 +427,7 @@ a:focus-visible,
   background: var(--warna-permukaan);
   border: 1px solid var(--warna-garis);
   border-radius: var(--radius-kartu);
+  box-shadow: var(--bayang-kartu);
   overflow-x: auto;
   /* Momentum scroll di iOS, dan garis bawah tabel tidak terpotong radius */
   -webkit-overflow-scrolling: touch;
@@ -535,12 +580,22 @@ a:focus-visible,
   }
 }
 
-/* Tata letak aplikasi --------------------------------------------------- */
+/* Kerangka aplikasi ----------------------------------------------------- */
 
-.layout {
-  display: grid;
-  grid-template-columns: var(--lebar-sidebar) 1fr;
+/*
+ * Cangkang: topnav yang menempel di atas, lalu baris sidebar + konten yang
+ * mengisi sisa tinggi layar.
+ *
+ * Tinggi memakai 100dvh, bukan 100vh. Di browser ponsel, 100vh adalah tinggi
+ * layar SEBELUM bilah alamat mengecil, sehingga bagian bawah halaman bersembunyi
+ * di balik bilah itu. 100dvh mengikuti tinggi yang benar-benar terlihat. 100vh
+ * tetap ditulis lebih dulu sebagai cadangan untuk browser lama.
+ */
+.cangkang {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* Lompat-ke-konten: hanya tampak saat difokus lewat keyboard */
@@ -556,29 +611,273 @@ a:focus-visible,
   top: var(--sp-3);
 }
 
-.sidebar {
-  background: var(--warna-permukaan);
-  border-right: 1px solid var(--warna-garis);
-  padding: var(--sp-4) var(--sp-3);
+/*
+ * TOPNAV.
+ *
+ * Bidang gelap inilah yang memberi halaman jangkar visual. Sebelum ada, seluruh
+ * layar berupa kartu putih di atas abu-abu sangat muda: tidak ada satu pun
+ * bidang pekat, sehingga semuanya terbaca sebagai satu lapis datar tanpa awal
+ * dan tanpa akhir.
+ */
+.topnav {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  /* Menu ikut saat halaman panjang di-scroll */
+  align-items: center;
+  gap: var(--sp-3);
+  height: var(--tinggi-topbar);
+  padding: 0 var(--sp-4);
+  background: var(--warna-primer-gelap);
+  color: #fff;
   position: sticky;
   top: 0;
-  height: 100vh;
-  overflow-y: auto;
+  z-index: 40;
+  box-shadow: var(--bayang-topnav);
 }
-.sidebar__merek {
+.topnav__merek {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3);
-  margin-bottom: var(--sp-3);
   font-weight: 700;
   font-size: 16px;
   letter-spacing: -0.01em;
-  color: var(--warna-primer);
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.topnav__merek:hover {
+  color: #fff;
+}
+.topnav__hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--tinggi-sentuh);
+  height: var(--tinggi-sentuh);
+  margin-left: calc(var(--sp-2) * -1);
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-tombol);
+  color: #fff;
+  cursor: pointer;
+}
+.topnav__hamburger:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.topnav__kanan {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+}
+.topnav__aksi {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-tombol);
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  transition: background var(--transisi), color var(--transisi);
+}
+.topnav__aksi:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+/* Lencana jumlah belum dibaca */
+.lencana {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-family: var(--font-angka);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  color: #fff;
+  background: var(--warna-bahaya);
+  border: 2px solid var(--warna-primer-gelap);
+  border-radius: var(--radius-badge);
+}
+
+/*
+ * REMAH ROTI.
+ *
+ * Menjawab "saya sedang di mana". Di layar tahap — skoring, SLIK, margin —
+ * sebelumnya tidak ada satu pun petunjuk pengajuan mana yang sedang dibuka,
+ * selain URL yang isinya UUID.
+ */
+.remah {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.72);
+  /* Garis pemisah dari merek, bukan jarak kosong: jarak saja membuat remah
+     roti terbaca seolah bagian dari nama aplikasi. */
+  padding-left: var(--sp-3);
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+}
+.remah__item {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.remah__pemisah {
+  margin: 0 var(--sp-2);
+  color: rgba(255, 255, 255, 0.4);
+}
+.remah a {
+  color: rgba(255, 255, 255, 0.72);
+  text-decoration: none;
+}
+.remah a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+/* Remah terakhir adalah halaman saat ini: lebih terang, tidak bisa diklik. */
+.remah__item:last-child span:not(.remah__pemisah) {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* MENU AKUN */
+.akun {
+  position: relative;
+}
+.akun__tombol {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 4px var(--sp-2) 4px 4px;
+  font: inherit;
+  color: #fff;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--radius-badge);
+  cursor: pointer;
+  transition: background var(--transisi), border-color var(--transisi);
+}
+.akun__tombol:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.akun__inisial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--warna-primer-gelap);
+  background: var(--warna-aksen-muda);
+  border-radius: 50%;
+}
+.akun__teks {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+}
+.akun__nama {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.akun__peran {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.7);
+}
+.akun__menu {
+  position: absolute;
+  top: calc(100% + var(--sp-2));
+  right: 0;
+  z-index: 50;
+  min-width: 210px;
+  padding: var(--sp-2);
+  background: var(--warna-permukaan);
+  border: 1px solid var(--warna-garis);
+  border-radius: var(--radius-kartu);
+  box-shadow: var(--bayang-melayang);
+}
+.akun__menu-kepala {
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  border-bottom: 1px solid var(--warna-garis);
+  color: var(--teks-utama);
+}
+.akun__menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  font: inherit;
+  color: var(--teks-utama);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-tombol);
+  cursor: pointer;
+}
+.akun__menu-item:hover {
+  background: var(--warna-latar);
+}
+
+/* BARIS SIDEBAR + KONTEN */
+.layout {
+  display: grid;
+  grid-template-columns: var(--lebar-sidebar) minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  /*
+   * Kolom sidebar diberi warna oleh LATAR .layout, bukan hanya oleh elemen
+   * sidebar-nya. Sebabnya: sidebar itu sticky setinggi viewport, jadi pada
+   * halaman yang lebih panjang daripada layar, ruang di bawahnya jatuh kembali
+   * ke warna latar halaman — dan panel putihnya terlihat "terpotong" di tengah
+   * jalan. Gradien dua-langkah ini membuat kolomnya utuh dari atas ke bawah
+   * pada posisi gulir mana pun.
+   */
+  background: linear-gradient(
+    to right,
+    var(--warna-permukaan) 0,
+    var(--warna-permukaan) var(--lebar-sidebar),
+    var(--warna-garis) var(--lebar-sidebar),
+    var(--warna-garis) calc(var(--lebar-sidebar) + 1px),
+    var(--warna-latar) calc(var(--lebar-sidebar) + 1px)
+  );
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-4) var(--sp-3);
+  background: var(--warna-permukaan);
+  border-right: 1px solid var(--warna-garis);
+  /* Menu ikut saat halaman panjang digulir, dan berhenti tepat di bawah topnav
+     — bukan di puncak viewport, yang akan menyelipkannya di balik topnav. */
+  position: sticky;
+  top: var(--tinggi-topbar);
+  height: calc(100dvh - var(--tinggi-topbar));
+  overflow-y: auto;
+}
+.sidebar__judul {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--teks-redup);
 }
 .sidebar a {
   display: flex;
@@ -595,10 +894,26 @@ a:focus-visible,
   background: var(--warna-latar);
   color: var(--teks-utama);
 }
+/*
+ * Menu aktif memakai penanda GARIS di kiri, bukan hanya latar berwarna. Latar
+ * muda saja mudah hilang di proyektor yang warnanya pucat — dan demo dinilai
+ * lewat proyektor.
+ */
 .sidebar a.aktif {
+  position: relative;
   background: var(--warna-primer-lembut);
   color: var(--warna-primer);
   font-weight: 600;
+}
+.sidebar a.aktif::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--warna-primer);
 }
 /* Ikon menu: penanda posisi, bukan hiasan. Ukurannya ikut ukuran teks. */
 .sidebar a svg {
@@ -610,49 +925,42 @@ a:focus-visible,
 .sidebar a.aktif svg {
   opacity: 1;
 }
-.sidebar__pengguna {
-  margin-top: var(--sp-3);
-  padding-top: var(--sp-3);
-  border-top: 1px solid var(--warna-garis);
-}
-
-.konten {
-  padding: var(--sp-5) var(--sp-6);
-  max-width: var(--lebar-konten-maks);
-  width: 100%;
-  /* Selalu ada ruang di bawah supaya tombol terakhir tidak menempel tepi */
-  padding-bottom: var(--sp-7);
-}
-
-/* Bar atas — hanya muncul di layar sempit */
-.topbar {
-  display: none;
-  align-items: center;
-  gap: var(--sp-3);
-  height: var(--tinggi-topbar);
-  padding: 0 var(--sp-3);
-  background: var(--warna-permukaan);
-  border-bottom: 1px solid var(--warna-garis);
-  position: sticky;
-  top: 0;
-  z-index: 30;
-}
-.topbar__merek {
+.sidebar__jumlah {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 0 6px;
+  font-family: var(--font-angka);
+  font-size: 11px;
   font-weight: 700;
-  color: var(--warna-primer);
+  line-height: 18px;
+  text-align: center;
+  color: #fff;
+  background: var(--warna-bahaya);
+  border-radius: var(--radius-badge);
 }
-.hamburger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--tinggi-sentuh);
-  height: var(--tinggi-sentuh);
-  padding: 0;
-  background: transparent;
-  border: 1px solid var(--warna-garis);
-  border-radius: var(--radius-tombol);
-  color: var(--teks-utama);
-  cursor: pointer;
+/* Keluar ada di menu akun pada topnav; di sidebar ia hanya untuk ponsel. */
+.sidebar__keluar {
+  display: none;
+}
+
+/*
+ * KONTEN SELEBAR PENUH.
+ *
+ * Batas 1200px dilepas. Alat back-office ini menampilkan tabel enam kolom berisi
+ * rupiah dan tanggal; pada layar 1920px, membatasi lebar berarti menyisakan
+ * ratusan piksel abu-abu kosong di kanan sementara kolom di dalam tabel
+ * berhimpitan. Yang menjaga teks tetap nyaman dibaca bukan lebar HALAMAN,
+ * melainkan lebar PARAGRAF — dan itu diatur terpisah lewat .teks-panjang.
+ */
+.konten {
+  width: 100%;
+  min-width: 0;
+  padding: var(--sp-5) var(--sp-6) var(--sp-7);
+}
+
+/* Paragraf penjelas tetap dibatasi supaya barisnya tidak terlalu panjang */
+.teks-panjang {
+  max-width: 72ch;
 }
 
 .tirai {
@@ -892,10 +1200,41 @@ a:focus-visible,
    */
   .layout {
     grid-template-columns: minmax(0, 1fr);
+    /* Tidak ada kolom sidebar di ponsel — laci melayang di atas konten. */
+    background: var(--warna-latar);
   }
 
-  .topbar {
-    display: flex;
+  /* Hamburger hanya ada di ponsel; di desktop sidebar selalu terlihat. */
+  .topnav__hamburger {
+    display: inline-flex;
+  }
+
+  /*
+   * Remah roti disembunyikan di ponsel. Di lebar 390px ia berebut ruang dengan
+   * merek dan menu akun, dan yang kalah selalu menu akun — padahal di sanalah
+   * tombol Keluar berada. Judul halaman toh selalu ada sebagai <h1> tepat di
+   * bawahnya, jadi tidak ada informasi yang hilang.
+   */
+  .remah {
+    display: none;
+  }
+
+  /* Nama dan peran disembunyikan; inisial di lingkaran sudah cukup menandai
+     siapa yang sedang masuk, dan namanya tetap ada di dalam menunya. */
+  .akun__teks {
+    display: none;
+  }
+  .akun__tombol {
+    padding: 3px;
+    border-color: transparent;
+  }
+
+  /* Di ponsel tombol Keluar kembali ke dasar laci: menu akun di topnav
+     menyusut menjadi satu lingkaran, dan menyembunyikan satu-satunya jalan
+     keluar di baliknya membuatnya sulit ditemukan. */
+  .sidebar__keluar {
+    display: inline-flex;
+    margin-top: var(--sp-3);
   }
 
   /*
@@ -905,10 +1244,12 @@ a:focus-visible,
    */
   .sidebar {
     position: fixed;
-    inset: 0 auto 0 0;
+    top: var(--tinggi-topbar);
+    bottom: 0;
+    left: 0;
     z-index: 50;
-    width: min(80vw, 300px);
-    height: 100vh;
+    width: min(84vw, 300px);
+    height: auto;
     border-right: 1px solid var(--warna-garis);
     box-shadow: var(--bayang-melayang);
     transform: translateX(-100%);
@@ -923,11 +1264,20 @@ a:focus-visible,
     font-size: 15px;
   }
 
+  /*
+   * Tirai mulai DI BAWAH topnav, bukan menutupi seluruh layar. Kalau ia
+   * menutupi topnav, tombol hamburger tidak bisa ditekan untuk menutup laci —
+   * padahal ikonnya sudah berubah menjadi tanda silang, yang menjanjikan
+   * justru sebaliknya.
+   */
   .tirai {
     display: block;
     position: fixed;
-    inset: 0;
-    z-index: 40;
+    top: var(--tinggi-topbar);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 39;
     background: rgba(22, 33, 30, 0.45);
     border: none;
   }

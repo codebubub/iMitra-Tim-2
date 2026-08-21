@@ -197,7 +197,9 @@ export function AntrianApproval() {
                       ...(a.id === dipilih ? gaya.barisTerpilih : {}),
                     }}
                   >
-                    <td data-label="Nomor Referensi" className="mono">{a.nomorReferensi}</td>
+                    <td data-label="Nomor Referensi" className="mono">
+                      <Link to={`/pengajuan/${a.id}`}>{a.nomorReferensi}</Link>
+                    </td>
                     <td data-label="Total Plafon" className="angka">{rupiah(a.totalPlafon)}</td>
                     <td data-label="Status">
                       <BadgeStatus status={a.status} />
