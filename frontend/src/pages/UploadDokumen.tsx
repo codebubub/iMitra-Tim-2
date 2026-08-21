@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { GalatApi } from '../api/client'
 import { ambilDaftarDokumen, unggahDokumen, type Dokumen, type JenisDokumen } from '../api/dokumen'
+import { bolehUnggahDokumen, kelasBadgeDokumen } from '../api/logika-lapangan'
 import { PanelGalat } from '../components/PanelGalat'
 
 /**
@@ -109,10 +110,9 @@ function KartuDokumen({
   const [bukaRiwayat, setBukaRiwayat] = useState(false)
 
   const status = dokumen?.status ?? 'BELUM'
-  const belumAda = !dokumen
   const ditolak = status === 'REJECTED'
   // Hanya boleh unggah bila belum ada dokumen ATAU dokumen ditolak (AC-03).
-  const bolehUnggah = belumAda || ditolak
+  const bolehUnggah = bolehUnggahDokumen(dokumen)
 
   function pilihBerkas(e: React.ChangeEvent<HTMLInputElement>) {
     const berkas = e.target.files?.[0]
@@ -126,7 +126,7 @@ function KartuDokumen({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <strong>{LABEL_JENIS[jenis]}</strong>
         {dokumen ? (
-          <span className={badgeKelas(status)}>{LABEL_STATUS[status] ?? status}</span>
+          <span className={kelasBadgeDokumen(status)}>{LABEL_STATUS[status] ?? status}</span>
         ) : (
           <span className="badge">Belum diunggah</span>
         )}
@@ -206,12 +206,6 @@ function KartuDokumen({
       )}
     </div>
   )
-}
-
-function badgeKelas(status: string): string {
-  if (status === 'VERIFIED') return 'badge badge--sukses'
-  if (status === 'REJECTED') return 'badge badge--bahaya'
-  return 'badge badge--info'
 }
 
 function labelAlasan(kode: string): string {

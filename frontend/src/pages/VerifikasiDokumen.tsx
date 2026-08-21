@@ -10,6 +10,7 @@ import {
   type Dokumen,
   type KodeAlasan,
 } from '../api/dokumen'
+import { kelasBadgeDokumen, tolakDinonaktifkan } from '../api/logika-lapangan'
 import { PanelGalat } from '../components/PanelGalat'
 
 /**
@@ -133,7 +134,7 @@ export function VerifikasiDokumen() {
                     }}
                   >
                     <span>{LABEL_JENIS[d.jenis] ?? d.jenis}</span>
-                    <span className={badgeKelas(d.status)}>{d.status}</span>
+                    <span className={kelasBadgeDokumen(d.status)}>{d.status}</span>
                   </button>
                 ))}
               </div>
@@ -194,7 +195,7 @@ function PanelVerifikasi({
         <strong>
           {LABEL_JENIS[dokumen.jenis] ?? dokumen.jenis} · versi {dokumen.versi}
         </strong>
-        <span className={badgeKelas(dokumen.status)}>{dokumen.status}</span>
+        <span className={kelasBadgeDokumen(dokumen.status)}>{dokumen.status}</span>
       </div>
 
       {/* Pratinjau berkas — memakai id dokumen, bukan NIK (BR-11). */}
@@ -280,7 +281,7 @@ function PanelVerifikasi({
                 type="button"
                 className="tombol tombol--bahaya"
                 style={{ marginTop: 12 }}
-                disabled={!kode || sedang}
+                disabled={tolakDinonaktifkan(kode, sedang)}
                 onClick={() => kode && onTolak(kode, catatan.trim() || undefined)}
               >
                 {sedang ? 'Mengirim...' : 'Kirim penolakan'}
@@ -291,10 +292,4 @@ function PanelVerifikasi({
       )}
     </div>
   )
-}
-
-function badgeKelas(status: string): string {
-  if (status === 'VERIFIED') return 'badge badge--sukses'
-  if (status === 'REJECTED') return 'badge badge--bahaya'
-  return 'badge badge--info'
 }

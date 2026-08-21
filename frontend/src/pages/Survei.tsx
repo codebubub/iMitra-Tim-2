@@ -3,6 +3,12 @@ import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { rupiah, type GalatApi } from '../api/client'
 import { ambilDaftarSurvei, nilaiSurvei, rekamSurvei, type Survei } from '../api/survei'
+import {
+  bolehKirimSurvei,
+  formatRibuan,
+  hanyaDigit,
+  nilaiSurveiDinonaktifkan,
+} from '../api/logika-lapangan'
 import { useAuth } from '../auth/AuthContext'
 import { PanelGalat } from '../components/PanelGalat'
 
@@ -17,12 +23,6 @@ import { PanelGalat } from '../components/PanelGalat'
  * Penilaian 1–5 HANYA muncul untuk ANL. Skoring memerlukan minimal satu survei
  * VALID (BR-03) — dijelaskan di helper text, tapi ditegakkan server.
  */
-
-const formatRibuan = (nilai: string): string => {
-  const angka = nilai.replace(/\D/g, '')
-  return angka ? Number(angka).toLocaleString('id-ID') : ''
-}
-const keAngka = (nilai: string): number => Number(nilai.replace(/\D/g, '')) || 0
 
 export function SurveiHalaman() {
   const { id } = useParams<{ id: string }>()
@@ -72,7 +72,7 @@ function FormRekamSurvei({ pengajuanId, survei }: { pengajuanId: string; survei:
       rekamSurvei(pengajuanId, {
         latitude: lat ? Number(lat) : null,
         longitude: lng ? Number(lng) : null,
-        omzetHarian: keAngka(omzet),
+        omzetHarian: hanyaDigit(omzet),
         lamaUsahaBulan: Number(lama) || 0,
         catatan: catatan.trim(),
         foto,
@@ -108,7 +108,9 @@ function FormRekamSurvei({ pengajuanId, survei }: { pengajuanId: string; survei:
     e.target.value = ''
   }
 
-  const bolehKirim = foto.length >= 1 && keAngka(omzet) > 0 && !rekam.isPending
+  const bolehKirim =
+    bolehKirimSurvei({ jumlahFoto: foto.length, omzetHarian: hanyaDigit(omzet) }) &&
+    !rekam.isPending
 
   return (
     <>
@@ -378,7 +380,7 @@ function KartuNilaiSurvei({ pengajuanId, survei }: { pengajuanId: string; survei
           <button
             type="button"
             className="tombol"
-            disabled={skala == null || nilai.isPending}
+            disabled={nilaiSurveiDinonaktifkan(skala, nilai.isPending)}
             onClick={() => {
               setGalat(null)
               nilai.mutate('VALID')
@@ -389,7 +391,7 @@ function KartuNilaiSurvei({ pengajuanId, survei }: { pengajuanId: string; survei
           <button
             type="button"
             className="tombol tombol--bahaya"
-            disabled={skala == null || nilai.isPending}
+            disabled={nilaiSurveiDinonaktifkan(skala, nilai.isPending)}
             onClick={() => {
               setGalat(null)
               nilai.mutate('TIDAK_VALID')
