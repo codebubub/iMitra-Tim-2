@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { rupiah, type GalatApi } from '../api/client'
 import { ambilDaftarSurvei, nilaiSurvei, rekamSurvei, type Survei } from '../api/survei'
+import { fileKeBase64 } from '../api/berkas'
 import {
   bolehKirimSurvei,
   formatRibuan,
@@ -63,23 +64,27 @@ function FormRekamSurvei({ pengajuanId, survei }: { pengajuanId: string; survei:
   const [omzet, setOmzet] = useState('')
   const [lama, setLama] = useState('')
   const [catatan, setCatatan] = useState('')
-  const [foto, setFoto] = useState<File[]>([])
+  const [foto, setFoto] = useState<File | null>(null)
   const [galat, setGalat] = useState<GalatApi | null>(null)
   const [statusGeo, setStatusGeo] = useState<string | null>(null)
 
   const rekam = useMutation<Survei, GalatApi>({
-    mutationFn: () =>
-      rekamSurvei(pengajuanId, {
-        latitude: lat ? Number(lat) : null,
-        longitude: lng ? Number(lng) : null,
+    mutationFn: async () => {
+      if (!foto) throw { error: 'VALIDASI', message: 'Foto wajib diisi', status: 400 } as GalatApi
+      const fotoBase64 = await fileKeBase64(foto)
+      return rekamSurvei(pengajuanId, {
+        latitude: Number(lat),
+        longitude: Number(lng),
         omzetHarian: hanyaDigit(omzet),
         lamaUsahaBulan: Number(lama) || 0,
         catatan: catatan.trim(),
-        foto,
-      }),
+        fotoBase64,
+        fotoMime: foto.type || 'image/jpeg',
+      })
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['survei', pengajuanId] })
-      setFoto([])
+      setFoto(null)
       setStatusGeo(null)
     },
     onError: setGalat,
@@ -102,15 +107,18 @@ function FormRekamSurvei({ pengajuanId, survei }: { pengajuanId: string; survei:
     )
   }
 
-  function tambahFoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const baru = Array.from(e.target.files ?? [])
-    setFoto((prev) => [...prev, ...baru])
+  function pilihFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    setFoto(e.target.files?.[0] ?? null)
     e.target.value = ''
   }
 
+  const adaKoordinat = lat.trim() !== '' && lng.trim() !== ''
   const bolehKirim =
-    bolehKirimSurvei({ jumlahFoto: foto.length, omzetHarian: hanyaDigit(omzet) }) &&
-    !rekam.isPending
+    bolehKirimSurvei({
+      jumlahFoto: foto ? 1 : 0,
+      omzetHarian: hanyaDigit(omzet),
+      adaKoordinat,
+    }) && !rekam.isPending
 
   return (
     <>
@@ -169,61 +177,57 @@ function FormRekamSurvei({ pengajuanId, survei }: { pengajuanId: string; survei:
           className="tombol tombol--sekunder"
           style={{ width: '100%', borderStyle: 'dashed', cursor: 'pointer' }}
         >
-          + Ambil / pilih foto
+          {foto ? 'Ganti foto' : '+ Ambil / pilih foto'}
         </label>
         <input
           id="foto"
           type="file"
           accept="image/*"
           capture="environment"
-          multiple
-          onChange={tambahFoto}
+          onChange={pilihFoto}
           style={{ display: 'none' }}
         />
-        {foto.length > 0 && (
+        {foto && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-            {foto.map((f, i) => (
-              <div
-                key={i}
+            <div
+              style={{
+                position: 'relative',
+                width: 64,
+                height: 64,
+                border: '1px solid var(--warna-garis)',
+                borderRadius: 6,
+                overflow: 'hidden',
+              }}
+            >
+              <img
+                src={URL.createObjectURL(foto)}
+                alt="Foto tempat usaha"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+              <button
+                type="button"
+                aria-label="Hapus foto"
+                onClick={() => setFoto(null)}
                 style={{
-                  position: 'relative',
-                  width: 64,
-                  height: 64,
-                  border: '1px solid var(--warna-garis)',
-                  borderRadius: 6,
-                  overflow: 'hidden',
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  background: 'var(--warna-bahaya)',
+                  color: '#fff',
+                  border: 'none',
+                  width: 18,
+                  height: 18,
+                  cursor: 'pointer',
+                  lineHeight: 1,
                 }}
               >
-                <img
-                  src={URL.createObjectURL(f)}
-                  alt={`Foto ${i + 1}`}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-                <button
-                  type="button"
-                  aria-label="Hapus foto"
-                  onClick={() => setFoto((prev) => prev.filter((_, idx) => idx !== i))}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    background: 'var(--warna-bahaya)',
-                    color: '#fff',
-                    border: 'none',
-                    width: 18,
-                    height: 18,
-                    cursor: 'pointer',
-                    lineHeight: 1,
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+                ×
+              </button>
+            </div>
           </div>
         )}
         <p className="redup" style={{ fontSize: 12, marginTop: 4 }}>
-          Minimal 1 foto
+          Wajib satu foto
         </p>
       </div>
 
@@ -317,25 +321,6 @@ function KartuNilaiSurvei({ pengajuanId, survei }: { pengajuanId: string; survei
           {survei.status}
         </span>
       </div>
-
-      {survei.fotoUrl.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-          {survei.fotoUrl.map((url, i) => (
-            <img
-              key={i}
-              src={url}
-              alt={`Foto usaha ${i + 1}`}
-              style={{
-                width: 80,
-                height: 80,
-                objectFit: 'cover',
-                borderRadius: 6,
-                border: '1px solid var(--warna-garis)',
-              }}
-            />
-          ))}
-        </div>
-      )}
 
       <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }} className="redup">
         <span>
