@@ -38,7 +38,7 @@ export function SurveiHalaman() {
   })
 
   return (
-    <div className="konten" style={{ maxWidth: 520 }}>
+    <div className="halaman-form">
       <h1>Survei Lapangan</h1>
       <p className="redup mono">Pengajuan {pengajuanId}</p>
 

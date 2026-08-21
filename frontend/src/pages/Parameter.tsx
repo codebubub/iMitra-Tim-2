@@ -125,7 +125,7 @@ export function Parameter() {
   }
 
   return (
-    <div className="konten">
+    <div>
       <h1>Parameter Sistem</h1>
       <p className="redup" style={{ marginTop: 4 }}>
         Perubahan berlaku pada perhitungan berikutnya, tanpa restart aplikasi.

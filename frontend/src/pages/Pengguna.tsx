@@ -116,7 +116,7 @@ export function Pengguna() {
   const formSiap = nama.trim() !== '' && username.trim() !== '' && sandi.length >= 8
 
   return (
-    <div className="konten">
+    <div>
       <div
         style={{
           display: 'flex',

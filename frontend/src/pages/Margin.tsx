@@ -111,7 +111,7 @@ export function Margin() {
   const tidakDibiayai = rentang !== undefined && !rentang.dibiayai
 
   return (
-    <div className="konten">
+    <div className="halaman-form">
       <h1>Penetapan Margin / Nisbah</h1>
 
       {isLoading && <p className="redup">Memuat rentang yang berlaku...</p>}

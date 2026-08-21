@@ -253,7 +253,7 @@ export function Skoring() {
   const skorSebelumPembulatan = totalBobot === 0 ? 0 : totalKontribusi / totalBobot
 
   return (
-    <div className="konten">
+    <div>
       <div
         style={{
           display: 'flex',

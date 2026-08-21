@@ -141,7 +141,7 @@ export function AntrianApproval() {
   const alasanTerpenuhi = !alasanWajib || alasan.trim().length > 0
 
   return (
-    <div className="konten">
+    <div>
       <h1>Antrian Approval</h1>
       <p className="redup" style={{ marginTop: 4 }}>
         Menampilkan pengajuan pada level Anda ({pengguna?.peran}). Daftar ini disaring di

@@ -5,6 +5,7 @@ import { api, rupiah } from '../api/client'
 import { BadgeStatus, labelStatus, nadaStatus } from '../components/Badge'
 import { Memuat } from '../components/Memuat'
 import { useAuth } from '../auth/AuthContext'
+import { waktuLengkap, waktuRelatif } from '../lib/waktu'
 
 type BarisPengajuan = {
   id: string
@@ -287,31 +288,4 @@ export function Dashboard() {
       )}
     </>
   )
-}
-
-/** Asia/Jakarta, sesuai asumsi A-7 — bukan zona waktu browser. */
-function waktuLengkap(iso: string): string {
-  return new Date(iso).toLocaleString('id-ID', {
-    timeZone: 'Asia/Jakarta',
-    dateStyle: 'full',
-    timeStyle: 'short',
-  })
-}
-
-function waktuRelatif(iso: string): string {
-  const detik = (Date.now() - new Date(iso).getTime()) / 1000
-
-  // Selisih negatif berarti jam server dan jam laptop berbeda. Menampilkan
-  // "dalam -3 detik" hanya membuat bingung; "baru saja" jujur dan tidak salah.
-  if (detik < 60) return 'baru saja'
-  if (detik < 3600) return `${Math.floor(detik / 60)} menit lalu`
-  if (detik < 86400) return `${Math.floor(detik / 3600)} jam lalu`
-  if (detik < 7 * 86400) return `${Math.floor(detik / 86400)} hari lalu`
-
-  return new Date(iso).toLocaleDateString('id-ID', {
-    timeZone: 'Asia/Jakarta',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
 }

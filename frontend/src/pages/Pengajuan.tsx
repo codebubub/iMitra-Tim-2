@@ -20,7 +20,7 @@ export function Pengajuan() {
   })
 
   return (
-    <div className="konten">
+    <div>
       <h1>Daftar Pengajuan</h1>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '24px 0' }}>

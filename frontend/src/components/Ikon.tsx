@@ -29,6 +29,7 @@ export type NamaIkon =
   | 'keluar'
   | 'menu'
   | 'silang'
+  | 'panah-kanan'
 
 const JALUR: Record<NamaIkon, JSX.Element> = {
   // Bentuk sederhana yang mengingatkan pada akad bagi hasil: dua sisi seimbang.
@@ -97,6 +98,11 @@ const JALUR: Record<NamaIkon, JSX.Element> = {
   silang: (
     <>
       <path d="M6 6l12 12M18 6L6 18" />
+    </>
+  ),
+  'panah-kanan': (
+    <>
+      <path d="m9 6 6 6-6 6" />
     </>
   ),
 }

@@ -97,7 +97,7 @@ export function VerifikasiDokumen() {
   }, [daftar, detail])
 
   return (
-    <div className="konten">
+    <div>
       <h1>Verifikasi Dokumen</h1>
       <p className="redup">
         {jumlahVerified} dari {daftar.length} dokumen terverifikasi

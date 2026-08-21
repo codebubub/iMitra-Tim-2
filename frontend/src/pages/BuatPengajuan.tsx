@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { Fragment, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { rupiah, type GalatApi } from '../api/client'
@@ -136,7 +136,7 @@ export function BuatPengajuan() {
   }
 
   return (
-    <div className="konten" style={{ maxWidth: 480 }}>
+    <div className="halaman-form">
       <a
         href="#/dashboard"
         onClick={(e) => {
@@ -167,46 +167,56 @@ export function BuatPengajuan() {
               ]}
               onPilih={(v) => setJenisNasabah(v as JenisNasabah)}
             />
+            {/*
+              Dua kolom bila ruangnya cukup, menumpuk bila tidak. Nama dan NIK
+              diisi berurutan dari kartu identitas yang sama, begitu juga alamat
+              dan jenis usaha dari kunjungan yang sama — jadi pasangannya bukan
+              sekadar demi ringkas, melainkan mengikuti urutan orang membaca
+              sumbernya.
+            */}
             {!kelompok && (
-              <div style={{ marginTop: 16 }}>
-                <label htmlFor="nama0">Nama nasabah</label>
-                <input
-                  id="nama0"
-                  value={anggota[0].nama}
-                  onChange={(e) => setAnggotaField(0, { nama: e.target.value })}
-                  required
-                />
-                <label htmlFor="nik0" style={{ marginTop: 12 }}>
-                  NIK
-                </label>
-                <input
-                  id="nik0"
-                  inputMode="numeric"
-                  maxLength={16}
-                  value={anggota[0].nik}
-                  onChange={(e) => setAnggotaField(0, { nik: e.target.value.replace(/\D/g, '') })}
-                  placeholder="16 digit"
-                  required
-                />
-                <label htmlFor="alamat0" style={{ marginTop: 12 }}>
-                  Alamat
-                </label>
-                <input
-                  id="alamat0"
-                  value={anggota[0].alamat}
-                  onChange={(e) => setAnggotaField(0, { alamat: e.target.value })}
-                  required
-                />
-                <label htmlFor="usaha0" style={{ marginTop: 12 }}>
-                  Jenis usaha
-                </label>
-                <input
-                  id="usaha0"
-                  value={anggota[0].jenisUsaha}
-                  onChange={(e) => setAnggotaField(0, { jenisUsaha: e.target.value })}
-                  placeholder="mis. Warung kelontong"
-                  required
-                />
+              <div className="grid-bidang">
+                <div className="bidang">
+                  <label htmlFor="nama0">Nama nasabah</label>
+                  <input
+                    id="nama0"
+                    value={anggota[0].nama}
+                    onChange={(e) => setAnggotaField(0, { nama: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="bidang">
+                  <label htmlFor="nik0">NIK</label>
+                  <input
+                    id="nik0"
+                    inputMode="numeric"
+                    maxLength={16}
+                    value={anggota[0].nik}
+                    onChange={(e) => setAnggotaField(0, { nik: e.target.value.replace(/\D/g, '') })}
+                    placeholder="16 digit"
+                    required
+                  />
+                  <span className="bantuan">Tanpa spasi atau tanda baca.</span>
+                </div>
+                <div className="bidang">
+                  <label htmlFor="alamat0">Alamat</label>
+                  <input
+                    id="alamat0"
+                    value={anggota[0].alamat}
+                    onChange={(e) => setAnggotaField(0, { alamat: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="bidang">
+                  <label htmlFor="usaha0">Jenis usaha</label>
+                  <input
+                    id="usaha0"
+                    value={anggota[0].jenisUsaha}
+                    onChange={(e) => setAnggotaField(0, { jenisUsaha: e.target.value })}
+                    placeholder="mis. Warung kelontong"
+                    required
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -223,96 +233,102 @@ export function BuatPengajuan() {
               ]}
               onPilih={(v) => setAkad(v as Akad)}
             />
-            {!kelompok && (
-              <div style={{ marginTop: 16 }}>
-                <label htmlFor="plafon0">Plafon diajukan</label>
-                <InputRupiah
-                  id="plafon0"
-                  nilai={anggota[0].plafon}
-                  onUbah={(v) => setAnggotaField(0, { plafon: v })}
+            <div className="grid-bidang">
+              {!kelompok && (
+                <div className="bidang">
+                  <label htmlFor="plafon0">Plafon diajukan</label>
+                  <InputRupiah
+                    id="plafon0"
+                    nilai={anggota[0].plafon}
+                    onUbah={(v) => setAnggotaField(0, { plafon: v })}
+                  />
+                  {/*
+                   * Batasnya sengaja TIDAK ditulis sebagai angka di sini.
+                   * Batas plafon adalah parameter yang bisa diubah admin tanpa
+                   * restart (AC-15); angka yang ditulis di layar akan menjadi
+                   * salah pada hari pertama seseorang mengubahnya, dan tidak
+                   * ada yang akan ingat memperbaikinya.
+                   */}
+                  <span className="bantuan">Batas plafon divalidasi saat pengiriman.</span>
+                </div>
+              )}
+              <div className="bidang">
+                <label htmlFor="tenor">Tenor (bulan)</label>
+                <input
+                  id="tenor"
+                  inputMode="numeric"
+                  value={tenor}
+                  onChange={(e) => setTenor(e.target.value.replace(/\D/g, ''))}
+                  required
                 />
-                <p className="redup" style={{ fontSize: 12, marginTop: 4 }}>
-                  Batas plafon divalidasi saat pengiriman.
-                </p>
               </div>
-            )}
-            <label htmlFor="tenor" style={{ marginTop: 16 }}>
-              Tenor (bulan)
-            </label>
-            <input
-              id="tenor"
-              inputMode="numeric"
-              value={tenor}
-              onChange={(e) => setTenor(e.target.value.replace(/\D/g, ''))}
-              required
-            />
+            </div>
           </div>
         )}
 
         {langkah === 3 && kelompok && (
           <>
             {anggota.map((a, i) => (
-              <div key={i} className="kartu" style={{ marginBottom: 12 }}>
-                <div
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <strong>Anggota {i + 1}</strong>
+              <div key={i} className="kartu" style={{ marginBottom: 'var(--sp-3)' }}>
+                <div className="kartu__kepala">
+                  <h3>Anggota {i + 1}</h3>
                   <button
                     type="button"
-                    className="tombol tombol--bahaya"
-                    style={{ padding: '4px 10px' }}
+                    className="tombol tombol--bahaya tombol--kecil"
                     onClick={() => hapusBaris(i)}
                     disabled={anggota.length <= 1}
                   >
                     Hapus
                   </button>
                 </div>
-                <label htmlFor={`nama${i}`} style={{ marginTop: 8 }}>
-                  Nama nasabah
-                </label>
-                <input
-                  id={`nama${i}`}
-                  value={a.nama}
-                  onChange={(e) => setAnggotaField(i, { nama: e.target.value })}
-                  required
-                />
-                <label htmlFor={`nik${i}`} style={{ marginTop: 8 }}>
-                  NIK
-                </label>
-                <input
-                  id={`nik${i}`}
-                  inputMode="numeric"
-                  maxLength={16}
-                  value={a.nik}
-                  onChange={(e) => setAnggotaField(i, { nik: e.target.value.replace(/\D/g, '') })}
-                  required
-                />
-                <label htmlFor={`alamat${i}`} style={{ marginTop: 8 }}>
-                  Alamat
-                </label>
-                <input
-                  id={`alamat${i}`}
-                  value={a.alamat}
-                  onChange={(e) => setAnggotaField(i, { alamat: e.target.value })}
-                  required
-                />
-                <label htmlFor={`usaha${i}`} style={{ marginTop: 8 }}>
-                  Jenis usaha
-                </label>
-                <input
-                  id={`usaha${i}`}
-                  value={a.jenisUsaha}
-                  onChange={(e) => setAnggotaField(i, { jenisUsaha: e.target.value })}
-                  required
-                />
-                <label htmlFor={`plafon${i}`} style={{ marginTop: 8 }}>
-                  Plafon
-                </label>
-                <InputRupiah
-                  id={`plafon${i}`}
-                  nilai={a.plafon}
-                  onUbah={(v) => setAnggotaField(i, { plafon: v })}
-                />
+                <div className="grid-bidang" style={{ marginTop: 0 }}>
+                  <div className="bidang">
+                    <label htmlFor={`nama${i}`}>Nama nasabah</label>
+                    <input
+                      id={`nama${i}`}
+                      value={a.nama}
+                      onChange={(e) => setAnggotaField(i, { nama: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="bidang">
+                    <label htmlFor={`nik${i}`}>NIK</label>
+                    <input
+                      id={`nik${i}`}
+                      inputMode="numeric"
+                      maxLength={16}
+                      value={a.nik}
+                      onChange={(e) => setAnggotaField(i, { nik: e.target.value.replace(/\D/g, '') })}
+                      required
+                    />
+                  </div>
+                  <div className="bidang">
+                    <label htmlFor={`alamat${i}`}>Alamat</label>
+                    <input
+                      id={`alamat${i}`}
+                      value={a.alamat}
+                      onChange={(e) => setAnggotaField(i, { alamat: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="bidang">
+                    <label htmlFor={`usaha${i}`}>Jenis usaha</label>
+                    <input
+                      id={`usaha${i}`}
+                      value={a.jenisUsaha}
+                      onChange={(e) => setAnggotaField(i, { jenisUsaha: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="bidang">
+                    <label htmlFor={`plafon${i}`}>Plafon</label>
+                    <InputRupiah
+                      id={`plafon${i}`}
+                      nilai={a.plafon}
+                      onUbah={(v) => setAnggotaField(i, { plafon: v })}
+                    />
+                  </div>
+                </div>
               </div>
             ))}
             <button
@@ -351,7 +367,7 @@ export function BuatPengajuan() {
         )}
 
         {/* Bilah aksi bawah */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+        <div className="kaki-form">
           {langkah > 1 && (
             <button
               type="button"
@@ -363,7 +379,7 @@ export function BuatPengajuan() {
             </button>
           )}
           {langkah === 1 || (langkah === 2 && kelompok) ? (
-            <button type="submit" className="tombol" style={{ flex: 1 }}>
+            <button type="submit" className="tombol">
               Lanjut
             </button>
           ) : (
@@ -379,7 +395,6 @@ export function BuatPengajuan() {
               <button
                 type="button"
                 className="tombol"
-                style={{ flex: 1 }}
                 onClick={() => {
                   setGalat(null)
                   kirim.mutate()
@@ -399,24 +414,30 @@ export function BuatPengajuan() {
 
 function IndikatorLangkah({ langkah, kelompok }: { langkah: number; kelompok: boolean }) {
   const daftar = kelompok
-    ? ['1 Nasabah', '2 Pembiayaan', '3 Anggota']
-    : ['1 Nasabah', '2 Pembiayaan']
-  // flexWrap + minWidth 0: badge memakai white-space: nowrap, jadi tiga label
-  // sekaligus tidak muat di layar 390px. Tanpa izin membungkus, deretan ini
-  // melebarkan SELURUH halaman sehingga bisa digeser ke samping — bukan hanya
-  // steppernya sendiri yang terpotong.
+    ? ['Nasabah', 'Pembiayaan', 'Anggota']
+    : ['Nasabah', 'Pembiayaan']
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-      {daftar.map((t, i) => (
-        <span
-          key={t}
-          className={i + 1 === langkah ? 'badge badge--info' : 'badge'}
-          style={{ flex: '1 1 auto', minWidth: 0, textAlign: 'center' }}
-        >
-          {t}
-        </span>
-      ))}
-    </div>
+    <nav className="langkah" aria-label="Langkah pengisian">
+      {daftar.map((t, i) => {
+        const nomor = i + 1
+        return (
+          <Fragment key={t}>
+            {i > 0 && <span className="langkah__garis" aria-hidden="true" />}
+            <span
+              className="langkah__item"
+              data-aktif={nomor === langkah}
+              data-lewat={nomor < langkah}
+              // Pembaca layar mendapat kalimat utuh; bagi pengguna awas hal yang
+              // sama disampaikan lewat warna lingkaran, yang tidak terbaca.
+              aria-current={nomor === langkah ? 'step' : undefined}
+            >
+              <span className="langkah__nomor">{nomor}</span>
+              <span>{t}</span>
+            </span>
+          </Fragment>
+        )
+      })}
+    </nav>
   )
 }
 

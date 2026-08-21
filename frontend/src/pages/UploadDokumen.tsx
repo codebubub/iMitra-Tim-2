@@ -79,7 +79,7 @@ export function UploadDokumen() {
   const anggotaTunggal = detail?.anggota[0]?.id ?? ''
 
   return (
-    <div className="konten" style={{ maxWidth: 480 }}>
+    <div className="halaman-form">
       <h1>Dokumen</h1>
       <p className="redup mono">Pengajuan {pengajuanId}</p>
 

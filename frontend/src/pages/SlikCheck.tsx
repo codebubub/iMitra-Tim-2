@@ -358,7 +358,7 @@ export function SlikCheck() {
     daftarRiwayat.find((r) => r.pengajuanAnggotaId === anggotaId) ?? null
 
   return (
-    <div className="konten">
+    <div>
       <div
         style={{
           display: 'flex',

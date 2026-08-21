@@ -413,6 +413,260 @@ button.kartu:hover {
   white-space: nowrap;
 }
 
+/* Formulir --------------------------------------------------------------- */
+
+/*
+ * Lebar halaman formulir.
+ *
+ * Sebelumnya tiap halaman formulir menetapkan lebarnya sendiri lewat gaya
+ * sebaris: 480px, 520px, 640px. Angka-angka itu dipilih ketika belum ada
+ * kerangka aplikasi, dan setelah sidebar 244px muncul, sisa ruang yang benar-
+ * benar terpakai tinggal sepertiga layar — formulirnya terlihat terjepit di
+ * pojok kiri, dan setiap field berdiri sendiri-sendiri ke bawah.
+ *
+ * 880px menampung dua kolom field selebar 240px berdampingan dengan nyaman,
+ * dan tetap menahan baris teks agar tidak terlalu panjang.
+ */
+.halaman-form {
+  max-width: 880px;
+}
+
+/*
+ * Satu bidang isian: label, input, dan teks bantuannya sebagai satu kesatuan.
+ * Jaraknya diatur di sini, bukan lewat marginTop sebaris di tiap label —
+ * cara lama membuat jarak antar-field berbeda-beda di halaman yang berbeda.
+ */
+.bidang + .bidang {
+  margin-top: var(--sp-4);
+}
+
+/*
+ * Dua field berdampingan bila ruangnya cukup, menumpuk bila tidak.
+ *
+ * Nama dan NIK, atau Alamat dan Jenis usaha, adalah pasangan yang lazim diisi
+ * berurutan. Menaruhnya berdampingan memangkas tinggi formulir hampir separuh,
+ * sehingga tombol lanjut tidak selalu berada di bawah lipatan.
+ *
+ * auto-fit + minmax: di layar sempit satu kolom, tanpa media query terpisah.
+ */
+.grid-bidang {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+  margin-top: var(--sp-4);
+}
+/* Satu kolom begitu dua kolom tidak lagi muat dengan nyaman. */
+@media (max-width: 720px) {
+  .grid-bidang {
+    grid-template-columns: 1fr;
+  }
+}
+/* Bidang yang butuh baris penuh, mis. alamat panjang atau catatan. */
+.bidang--lebar {
+  grid-column: 1 / -1;
+}
+.grid-bidang .bidang + .bidang {
+  margin-top: 0;
+}
+
+/* Kepala bagian di dalam kartu formulir */
+.kartu__kepala {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--warna-garis);
+}
+.kartu__kepala h2,
+.kartu__kepala h3 {
+  margin: 0;
+}
+
+/* Indikator langkah formulir bertahap */
+.langkah {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-4) 0 var(--sp-5);
+}
+.langkah__item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 13px;
+  color: var(--teks-redup);
+  white-space: nowrap;
+}
+.langkah__nomor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  font-family: var(--font-angka);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--teks-redup);
+  background: var(--warna-permukaan);
+  border: 1px solid var(--warna-garis-kuat);
+  border-radius: 50%;
+}
+.langkah__item[data-aktif='true'] {
+  color: var(--warna-primer);
+  font-weight: 600;
+}
+.langkah__item[data-aktif='true'] .langkah__nomor {
+  color: #fff;
+  background: var(--warna-primer);
+  border-color: var(--warna-primer);
+}
+/* Langkah yang sudah dilewati: tetap pekat, supaya kemajuan terlihat. */
+.langkah__item[data-lewat='true'] {
+  color: var(--teks-sekunder);
+}
+.langkah__item[data-lewat='true'] .langkah__nomor {
+  color: var(--warna-primer);
+  background: var(--warna-primer-lembut);
+  border-color: var(--warna-primer);
+}
+.langkah__garis {
+  flex: 1;
+  height: 1px;
+  min-width: var(--sp-3);
+  background: var(--warna-garis-kuat);
+}
+/* Label langkah disembunyikan di ponsel; nomornya tetap ada, dan judul kartu
+   di bawahnya sudah menjelaskan langkah yang sedang berjalan. */
+@media (max-width: 520px) {
+  .langkah__item span:not(.langkah__nomor) {
+    display: none;
+  }
+}
+
+/* Baris tombol di kaki formulir */
+/*
+ * Kaki formulir: aksi utama di KANAN, sesuai arah baca — mata berhenti di
+ * ujung kanan setelah menelusuri isian, dan di situlah tombol lanjut berada.
+ *
+ * Tombolnya selebar isinya, tidak melar. Tombol primer selebar 880px terbaca
+ * sebagai bilah, bukan sebagai tombol, dan membuat aksi sekunder di sebelahnya
+ * terlihat sepele padahal "Simpan draft" sama pentingnya bagi AO di lapangan
+ * yang kehilangan sinyal.
+ */
+.kaki-form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+.kaki-form .tombol {
+  min-width: 150px;
+}
+/* Tombol "Kembali" tetap di kiri, terpisah dari kelompok aksi maju. */
+.kaki-form .tombol--sekunder:first-child {
+  margin-right: auto;
+}
+
+/* Notifikasi ------------------------------------------------------------- */
+
+/*
+ * Satu notifikasi adalah satu kartu, bukan satu baris setinggi 44px di dalam
+ * satu kotak panjang.
+ *
+ * Bentuk lama menempatkan seluruh notifikasi dalam satu kartu dengan garis
+ * pemisah tipis, masing-masing berpadding 12px. Di layar selebar 1200px, itu
+ * membuat pesan sepanjang satu baris melayang di lautan ruang kosong, dan
+ * seluruh daftar terbaca sebagai tabel tanpa kolom. Yang belum dibaca pun sulit
+ * dikenali: pembedanya hanya warna latar yang sangat muda.
+ */
+.notif-daftar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+.notif {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  width: 100%;
+  padding: var(--sp-4) var(--sp-5);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: var(--warna-permukaan);
+  border: 1px solid var(--warna-garis);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-kartu);
+  box-shadow: var(--bayang-kartu);
+  cursor: pointer;
+  transition: box-shadow var(--transisi), border-color var(--transisi),
+    transform var(--transisi);
+}
+.notif:hover {
+  box-shadow: var(--bayang-angkat);
+  border-color: var(--warna-garis-kuat);
+}
+/*
+ * Yang belum dibaca ditandai TIGA cara sekaligus: garis tebal di kiri, latar
+ * bernada, dan teks tebal. Satu penanda saja tidak cukup — latar bernada muda
+ * nyaris tidak terlihat di proyektor, dan garis kiri saja hilang bagi orang
+ * yang memindai dari tengah.
+ */
+.notif[data-belum='true'] {
+  border-left-color: var(--warna-info);
+  background: var(--bg-info);
+}
+.notif__ikon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  color: var(--teks-redup);
+  background: var(--bg-netral);
+  border-radius: 50%;
+}
+.notif[data-belum='true'] .notif__ikon {
+  color: #fff;
+  background: var(--warna-info);
+}
+.notif__isi {
+  flex: 1;
+  min-width: 0;
+}
+.notif__pesan {
+  display: block;
+  font-size: 15px;
+  line-height: 22px;
+}
+.notif[data-belum='true'] .notif__pesan {
+  font-weight: 600;
+}
+.notif__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  font-size: 12px;
+  color: var(--teks-redup);
+}
+.notif__ref {
+  font-family: ui-monospace, monospace;
+}
+/* Tanda panah hanya untuk notifikasi yang benar-benar bisa dibuka */
+.notif__panah {
+  flex: none;
+  align-self: center;
+  color: var(--teks-redup);
+}
+
 /* Tabel ---------------------------------------------------------------- */
 
 /*
@@ -1298,6 +1552,27 @@ button.kartu:hover {
   .cip {
     min-height: var(--tinggi-sentuh);
     font-size: 14px;
+  }
+
+  .notif {
+    padding: var(--sp-3) var(--sp-4);
+    gap: var(--sp-3);
+  }
+  /* Panah dilepas: seluruh kartu sudah menjadi target sentuh, dan di layar
+     sempit panah hanya merebut ruang dari pesannya. */
+  .notif__panah {
+    display: none;
+  }
+  /* Di ponsel tiap tombol selebar layar dan ditumpuk: dua tombol berdampingan
+     pada 390px menyisakan lebar yang membuat labelnya terpotong. */
+  .kaki-form {
+    flex-direction: column-reverse;
+  }
+  .kaki-form .tombol {
+    width: 100%;
+  }
+  .kaki-form .tombol--sekunder:first-child {
+    margin-right: 0;
   }
 
 
