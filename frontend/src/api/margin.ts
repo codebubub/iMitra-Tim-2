@@ -47,7 +47,16 @@ export type HasilMargin = {
 }
 
 /** GET /api/pengajuan/{id}/margin — nilai tersimpan + rentang yang berlaku. */
-export function ambilMargin(pengajuanId: string): Promise<HasilMargin> {
+/**
+ * GET margin. `null` berarti SKORING BELUM DIJALANKAN — bukan galat, dan bukan
+ * "margin belum diisi".
+ *
+ * Server menjamin: kalau skoring sudah ada, respons selalu berupa objek, dengan
+ * marginPersen/nisbahBankPersen null bila nilainya memang belum ditetapkan.
+ * Jadi layar bisa membedakan "belum bisa diisi" dari "belum diisi" tanpa field
+ * tambahan.
+ */
+export function ambilMargin(pengajuanId: string): Promise<HasilMargin | null> {
   return api<HasilMargin>(`/api/pengajuan/${pengajuanId}/margin`)
 }
 

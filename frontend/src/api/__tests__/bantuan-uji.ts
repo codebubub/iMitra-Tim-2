@@ -42,7 +42,12 @@ export function pasangFetch(respons: {
       return {
         ok: status >= 200 && status < 300,
         status,
-        json: async () => respons.json ?? {},
+        // `'json' in respons`, BUKAN `respons.json ?? {}`. Dengan `??`, test yang
+        // sengaja mengirim `json: null` menerima `{}` — dan `null` adalah nilai
+        // yang punya arti pada kontrak GET margin: skoring belum dijalankan.
+        // Helper yang diam-diam mengubahnya membuat test kontrak menguji
+        // kebalikan dari yang ditulisnya.
+        json: async () => ('json' in respons ? respons.json : {}),
       } as unknown as Response
     }),
   )

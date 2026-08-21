@@ -59,10 +59,21 @@ describe('api/margin', () => {
     pasangFetch({ json: HASIL_MARGIN })
 
     const hasil = await ambilMargin('p1')
+    expect(hasil, 'skoring ada, jadi server mengirim objek — bukan null').not.toBeNull()
     // Rentang harus datang dari respons, bukan konstanta frontend (R-8).
-    expect(hasil.rentang.min).toBe(11)
-    expect(hasil.rentang.maks).toBe(13)
-    expect(hasil.rentang.dibiayai).toBe(true)
+    expect(hasil!.rentang.min).toBe(11)
+    expect(hasil!.rentang.maks).toBe(13)
+    expect(hasil!.rentang.dibiayai).toBe(true)
+  })
+
+  it('null diteruskan apa adanya saat skoring belum dijalankan', async () => {
+    // Kontraknya: null HANYA berarti skoring belum ada. Layar memakai ini untuk
+    // membedakan "belum bisa diisi" dari "belum diisi", jadi klien tidak boleh
+    // mengubahnya menjadi objek kosong atau melemparkannya sebagai galat.
+    pasangLocalStorage()
+    pasangFetch({ json: null })
+
+    await expect(ambilMargin('p1')).resolves.toBeNull()
   })
 
   it('grade tidak dibiayai: rentang null diteruskan (BR-05)', async () => {
@@ -77,7 +88,8 @@ describe('api/margin', () => {
     })
 
     const hasil = await ambilMargin('p1')
-    expect(hasil.rentang.dibiayai).toBe(false)
-    expect(hasil.rentang.min).toBeNull()
+    expect(hasil, 'skoring ada, jadi server mengirim objek — bukan null').not.toBeNull()
+    expect(hasil!.rentang.dibiayai).toBe(false)
+    expect(hasil!.rentang.min).toBeNull()
   })
 })

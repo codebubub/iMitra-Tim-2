@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { GalatApi } from '../api/client'
 import { ambilMargin, tetapkanMargin, type HasilMargin } from '../api/margin'
@@ -127,6 +127,32 @@ export function Margin() {
             Rentang margin tidak dapat dimuat dari server. Margin tidak dapat ditetapkan
             sampai data parameter tersedia.
           </span>
+        </div>
+      )}
+
+      {/*
+       * Skoring belum dijalankan. Ini BUKAN galat, jadi tampilannya bukan panel
+       * merah: tidak ada yang rusak, dan tidak ada aturan yang dilanggar oleh
+       * seseorang yang membuka layar ini terlalu awal.
+       *
+       * Sebelumnya keadaan ini menjawab HTTP 422 dan layar menampilkannya
+       * sebagai "rentang tidak dapat dimuat dari server" — mengirim analis
+       * memeriksa parameter dan koneksi, padahal yang kurang hanya satu langkah
+       * yang bisa ia kerjakan sendiri saat itu juga. Karena itu tautannya
+       * disediakan langsung.
+       */}
+      {!isLoading && !error && data === null && (
+        <div className="kartu kosong" style={{ marginTop: 'var(--sp-5)' }}>
+          <p style={{ margin: 0 }}>Skoring belum dijalankan untuk pengajuan ini.</p>
+          <p className="redup" style={{ marginTop: 'var(--sp-2)', fontSize: 13 }}>
+            Rentang margin ditentukan oleh grade final, jadi skoring harus selesai lebih
+            dulu.
+          </p>
+          <p style={{ marginTop: 'var(--sp-4)' }}>
+            <Link to={`/pengajuan/${pengajuanId}/skoring`} className="tombol">
+              Buka layar Skoring
+            </Link>
+          </p>
         </div>
       )}
 
