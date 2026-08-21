@@ -15,10 +15,10 @@ export function NotifikasiHalaman() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['notifikasi'],
-    queryFn: ambilNotifikasi,
+    queryFn: () => ambilNotifikasi(),
   })
 
-  const baca = useMutation<Notifikasi, unknown, string>({
+  const baca = useMutation<{ status: string }, unknown, string>({
     mutationFn: (id) => tandaiDibaca(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifikasi'] }),
   })
@@ -28,7 +28,10 @@ export function NotifikasiHalaman() {
     if (n.pengajuanId) navigate(`/pengajuan/${n.pengajuanId}`)
   }
 
-  const belumDibaca = (data ?? []).filter((n) => !n.dibaca).length
+  // Jumlah belum dibaca datang dari server (COUNT), bukan diturunkan dari
+  // panjang `baris` yang bisa terpotong `batas`.
+  const baris = data?.baris ?? []
+  const belumDibaca = data?.belumDibaca ?? 0
 
   return (
     <div className="konten" style={{ maxWidth: 640 }}>
@@ -39,12 +42,12 @@ export function NotifikasiHalaman() {
 
       {data && (
         <div className="kartu" style={{ padding: 0, marginTop: 12 }}>
-          {data.length === 0 && (
+          {baris.length === 0 && (
             <p className="redup" style={{ padding: 16 }}>
               Belum ada notifikasi.
             </p>
           )}
-          {data.map((n) => (
+          {baris.map((n) => (
             <button
               key={n.id}
               type="button"
@@ -77,6 +80,7 @@ export function NotifikasiHalaman() {
               <span style={{ flex: 1 }}>
                 <span style={{ fontWeight: n.dibaca ? 400 : 600 }}>{n.pesan}</span>
                 <span className="redup" style={{ display: 'block', fontSize: 12, marginTop: 2 }}>
+                  {n.nomorReferensi ? `${n.nomorReferensi} · ` : ''}
                   {new Date(n.dibuatPada).toLocaleString('id-ID')}
                 </span>
               </span>

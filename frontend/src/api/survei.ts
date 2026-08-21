@@ -5,41 +5,45 @@
  * MENILAI-nya (skala kondisi usaha 1–5 + VALID/TIDAK_VALID, asumsi A-10).
  * Penilaian 1–5 TIDAK diisi AO — kalau muncul di layar AO, itu bug.
  *
- * Foto diunggah sebagai multipart; sisanya JSON.
+ * BENTUK KONTRAK (docs/SDD-iMitra.md BAB 5 + routes/survei.ts): perekaman
+ * dikirim sebagai JSON, bukan multipart — repo backend sengaja tidak menambah
+ * dependensi multipart (AGENTS.md bagian 6 butir 1), jadi foto dikirim sebagai
+ * base64 di dalam JSON. Kontrak menerima SATU foto per perekaman
+ * (`fotoBase64` + `fotoMime`), dan koordinat WAJIB (server menolak tanpa
+ * keduanya) — layar menyediakan fallback isian manual bila GPS gagal.
  */
-import { api, ambilToken, hapusToken, type GalatApi } from './client'
-
-const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
+import { api } from './client'
 
 export type StatusSurvei = 'DRAFT' | 'VALID' | 'TIDAK_VALID'
 
+/**
+ * Bentuk yang benar-benar dikembalikan `GET /api/pengajuan/{id}/survei`
+ * (services/survei.service.ts). Server TIDAK mengembalikan URL foto maupun
+ * identitas perekam/penilai pada daftar ini — hanya fakta terukur + status.
+ */
 export type Survei = {
   id: string
-  pengajuanId: string
-  latitude: number | null
-  longitude: number | null
-  /** URL foto (id berkas, BR-11) — minimal satu saat dikirim. */
-  fotoUrl: string[]
+  latitude: number
+  longitude: number
   omzetHarian: number
   lamaUsahaBulan: number
   /** 1–5, diisi ANL (A-10). NULL sebelum dinilai. */
   kondisiUsahaSkala: number | null
   catatan: string
   status: StatusSurvei
-  direkamOleh: { id: string; nama: string } | null
-  dinilaiOleh: { id: string; nama: string } | null
   direkamPada: string
   dinilaiPada: string | null
 }
 
 export type RekamSurveiInput = {
-  latitude: number | null
-  longitude: number | null
+  latitude: number
+  longitude: number
   omzetHarian: number
   lamaUsahaBulan: number
   catatan: string
-  /** Minimal satu foto tempat usaha. */
-  foto: File[]
+  /** Satu foto tempat usaha; server menyimpan satu path per perekaman. */
+  fotoBase64: string
+  fotoMime: string
 }
 
 /** GET /api/pengajuan/{id}/survei — daftar survei. */
@@ -47,36 +51,15 @@ export function ambilDaftarSurvei(pengajuanId: string): Promise<Survei[]> {
   return api<Survei[]>(`/api/pengajuan/${pengajuanId}/survei`)
 }
 
-/** POST /api/pengajuan/{id}/survei — AO merekam survei + foto (multipart). */
-export async function rekamSurvei(pengajuanId: string, input: RekamSurveiInput): Promise<Survei> {
-  const token = ambilToken()
-  const form = new FormData()
-  if (input.latitude !== null) form.append('latitude', String(input.latitude))
-  if (input.longitude !== null) form.append('longitude', String(input.longitude))
-  form.append('omzetHarian', String(input.omzetHarian))
-  form.append('lamaUsahaBulan', String(input.lamaUsahaBulan))
-  form.append('catatan', input.catatan)
-  input.foto.forEach((f) => form.append('foto', f))
-
-  const res = await fetch(`${BASE}/api/pengajuan/${pengajuanId}/survei`, {
+/**
+ * POST /api/pengajuan/{id}/survei — AO merekam survei (JSON, foto base64).
+ * Lewat helper `api()` biasa: kontraknya JSON, bukan multipart.
+ */
+export function rekamSurvei(pengajuanId: string, input: RekamSurveiInput): Promise<Survei> {
+  return api<Survei>(`/api/pengajuan/${pengajuanId}/survei`, {
     method: 'POST',
-    headers: token ? { authorization: `Bearer ${token}` } : {},
-    body: form,
+    body: JSON.stringify(input),
   })
-
-  if (res.status === 401) hapusToken()
-
-  const body = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    const galat: GalatApi = {
-      error: body.error ?? 'GALAT_TIDAK_DIKENAL',
-      message: body.message ?? 'Gagal merekam survei',
-      rule: body.rule,
-      status: res.status,
-    }
-    throw galat
-  }
-  return body as Survei
 }
 
 /**

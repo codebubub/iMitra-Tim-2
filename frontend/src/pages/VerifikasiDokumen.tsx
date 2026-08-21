@@ -10,6 +10,12 @@ import {
   type Dokumen,
   type KodeAlasan,
 } from '../api/dokumen'
+import { ambilDetailPengajuan } from '../api/pengajuan'
+import {
+  kelasBadgeDokumen,
+  dokumenTerbaruPerKunci,
+  tolakDinonaktifkan,
+} from '../api/logika-lapangan'
 import { PanelGalat } from '../components/PanelGalat'
 
 /**
@@ -51,10 +57,23 @@ export function VerifikasiDokumen() {
     enabled: !!pengajuanId,
   })
 
-  const daftar = useMemo(() => data ?? [], [data])
+  // Detail dipakai untuk memetakan id anggota → nama (server tidak mengirim nama
+  // di daftar dokumen; BR-11 menjaga data pribadi keluar dari daftar itu).
+  const { data: detail } = useQuery({
+    queryKey: ['pengajuan', pengajuanId],
+    queryFn: () => ambilDetailPengajuan(pengajuanId),
+    enabled: !!pengajuanId,
+  })
+
+  // Server mengirim semua versi; ANL memverifikasi versi TERAKHIR tiap slot.
+  const daftar = useMemo(() => dokumenTerbaruPerKunci(data ?? []), [data])
   const aktif = daftar.find((d) => d.id === dipilih) ?? daftar[0]
 
-  const verifikasi = useMutation<Dokumen, GalatApi, Parameters<typeof verifikasiDokumen>[1]>({
+  const verifikasi = useMutation<
+    Awaited<ReturnType<typeof verifikasiDokumen>>,
+    GalatApi,
+    Parameters<typeof verifikasiDokumen>[1]
+  >({
     mutationFn: (input) => verifikasiDokumen(aktif!.id, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['dokumen', pengajuanId] }),
     onError: setGalat,
@@ -62,16 +81,20 @@ export function VerifikasiDokumen() {
 
   const jumlahVerified = daftar.filter((d) => d.status === 'VERIFIED').length
 
-  // Kelompokkan per anggota (untuk majelis).
+  // Kelompokkan per anggota (untuk majelis). Nama diambil dari detail; slot yang
+  // belum termuat detailnya dikelompokkan di bawah label netral.
   const perAnggota = useMemo(() => {
+    const nama = new Map<string, string>()
+    for (const a of detail?.anggota ?? []) nama.set(a.id, a.nama)
     const peta = new Map<string, Dokumen[]>()
     for (const d of daftar) {
-      const arr = peta.get(d.namaAnggota) ?? []
+      const label = nama.get(d.pengajuanAnggotaId) ?? 'Anggota'
+      const arr = peta.get(label) ?? []
       arr.push(d)
-      peta.set(d.namaAnggota, arr)
+      peta.set(label, arr)
     }
     return [...peta.entries()]
-  }, [daftar])
+  }, [daftar, detail])
 
   return (
     <div className="konten">
@@ -133,7 +156,7 @@ export function VerifikasiDokumen() {
                     }}
                   >
                     <span>{LABEL_JENIS[d.jenis] ?? d.jenis}</span>
-                    <span className={badgeKelas(d.status)}>{d.status}</span>
+                    <span className={kelasBadgeDokumen(d.status)}>{d.status}</span>
                   </button>
                 ))}
               </div>
@@ -194,7 +217,7 @@ function PanelVerifikasi({
         <strong>
           {LABEL_JENIS[dokumen.jenis] ?? dokumen.jenis} · versi {dokumen.versi}
         </strong>
-        <span className={badgeKelas(dokumen.status)}>{dokumen.status}</span>
+        <span className={kelasBadgeDokumen(dokumen.status)}>{dokumen.status}</span>
       </div>
 
       {/* Pratinjau berkas — memakai id dokumen, bukan NIK (BR-11). */}
@@ -280,7 +303,7 @@ function PanelVerifikasi({
                 type="button"
                 className="tombol tombol--bahaya"
                 style={{ marginTop: 12 }}
-                disabled={!kode || sedang}
+                disabled={tolakDinonaktifkan(kode, sedang)}
                 onClick={() => kode && onTolak(kode, catatan.trim() || undefined)}
               >
                 {sedang ? 'Mengirim...' : 'Kirim penolakan'}
@@ -291,10 +314,4 @@ function PanelVerifikasi({
       )}
     </div>
   )
-}
-
-function badgeKelas(status: string): string {
-  if (status === 'VERIFIED') return 'badge badge--sukses'
-  if (status === 'REJECTED') return 'badge badge--bahaya'
-  return 'badge badge--info'
 }

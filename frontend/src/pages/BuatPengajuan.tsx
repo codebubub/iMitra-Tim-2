@@ -11,6 +11,13 @@ import {
   type RingkasBuatPengajuan,
 } from '../api/pengajuan'
 import { PanelGalat } from '../components/PanelGalat'
+import {
+  anggotaLengkap,
+  anggotaUntukPayload,
+  formatRibuan,
+  hanyaDigit,
+  hitungTotalPlafon,
+} from '../api/logika-lapangan'
 
 /**
  * S-03 · Buat Pengajuan (FR-02, FR-10) — mobile-first, dipakai AO di lapangan.
@@ -25,6 +32,9 @@ import { PanelGalat } from '../components/PanelGalat'
  * - Nomor referensi dibangkitkan server saat submit (#4), tidak pernah di sini.
  * - Level approval yang ditampilkan berasal dari respons server setelah draft
  *   disimpan, bukan dari ambang yang ditebak frontend.
+ *
+ * Logika keputusan (total plafon, kelengkapan anggota, pemilihan baris payload)
+ * diekstrak ke src/api/logika-lapangan.ts supaya bisa diuji tanpa merender.
  */
 
 type BarisAnggota = {
@@ -43,14 +53,6 @@ const anggotaKosong = (): BarisAnggota => ({
   plafon: '',
 })
 
-/** Format ribuan untuk tampilan input rupiah — presentasi, bukan aturan bisnis. */
-function formatRibuan(nilai: string): string {
-  const angka = nilai.replace(/\D/g, '')
-  if (!angka) return ''
-  return Number(angka).toLocaleString('id-ID')
-}
-const keAngka = (nilai: string): number => Number(nilai.replace(/\D/g, '')) || 0
-
 export function BuatPengajuan() {
   const navigate = useNavigate()
   const [langkah, setLangkah] = useState<1 | 2 | 3>(1)
@@ -64,7 +66,7 @@ export function BuatPengajuan() {
 
   // Total plafon dihitung live dari input (penjumlahan murni).
   const totalPlafon = useMemo(
-    () => anggota.reduce((sum, a) => sum + keAngka(a.plafon), 0),
+    () => hitungTotalPlafon(anggota.map((a) => hanyaDigit(a.plafon))),
     [anggota],
   )
 
@@ -84,12 +86,12 @@ export function BuatPengajuan() {
     tenorBulan: number
     anggota: AnggotaBaru[]
   } {
-    const daftar = (kelompok ? anggota : anggota.slice(0, 1)).map((a) => ({
+    const daftar = anggotaUntukPayload(jenisNasabah, anggota).map((a) => ({
       nama: a.nama.trim(),
       nik: a.nik.replace(/\D/g, ''),
       alamat: a.alamat.trim(),
       jenisUsaha: a.jenisUsaha.trim(),
-      plafonDiajukan: keAngka(a.plafon),
+      plafonDiajukan: hanyaDigit(a.plafon),
     }))
     return { jenisNasabah, akad, tenorBulan: Number(tenor) || 0, anggota: daftar }
   }
@@ -110,6 +112,19 @@ export function BuatPengajuan() {
   })
 
   const sedangKirim = simpanDraft.isPending || kirim.isPending
+
+  // "Kirim" hanya aktif jika seluruh baris anggota yang akan dikirim lengkap
+  // (nama, NIK 16 digit, alamat, jenis usaha, plafon > 0). "Simpan draft" tetap
+  // boleh walau belum lengkap — AO menyimpan draf setengah jadi di lapangan.
+  const semuaLengkap = anggotaUntukPayload(jenisNasabah, anggota).every((a) =>
+    anggotaLengkap({
+      nama: a.nama.trim(),
+      nik: a.nik.replace(/\D/g, ''),
+      alamat: a.alamat.trim(),
+      jenisUsaha: a.jenisUsaha.trim(),
+      plafonDiajukan: hanyaDigit(a.plafon),
+    }),
+  )
 
   function lanjut(e: FormEvent) {
     e.preventDefault()
@@ -366,7 +381,8 @@ export function BuatPengajuan() {
                   setGalat(null)
                   kirim.mutate()
                 }}
-                disabled={sedangKirim}
+                disabled={sedangKirim || !semuaLengkap}
+                title={!semuaLengkap ? 'Lengkapi seluruh data anggota sebelum mengirim' : undefined}
               >
                 {kirim.isPending ? 'Mengirim...' : 'Kirim'}
               </button>
