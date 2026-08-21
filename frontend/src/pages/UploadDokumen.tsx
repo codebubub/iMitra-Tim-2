@@ -2,8 +2,20 @@ import { useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { GalatApi } from '../api/client'
-import { ambilDaftarDokumen, unggahDokumen, type Dokumen, type JenisDokumen } from '../api/dokumen'
-import { bolehUnggahDokumen, kelasBadgeDokumen } from '../api/logika-lapangan'
+import {
+  ambilDaftarDokumen,
+  unggahDokumen,
+  type Dokumen,
+  type JenisDokumen,
+  type RingkasUnggahDokumen,
+} from '../api/dokumen'
+import { ambilDetailPengajuan } from '../api/pengajuan'
+import {
+  bolehUnggahDokumen,
+  dokumenTerbaruPerKunci,
+  kelasBadgeDokumen,
+  riwayatDokumen,
+} from '../api/logika-lapangan'
 import { PanelGalat } from '../components/PanelGalat'
 
 /**
@@ -42,19 +54,29 @@ export function UploadDokumen() {
     enabled: !!pengajuanId,
   })
 
+  // Detail dipakai HANYA untuk memetakan slot dokumen ke id anggota (perorangan
+  // = satu anggota). Angka bisnis apa pun tetap dari server, bukan dari sini.
+  const { data: detail } = useQuery({
+    queryKey: ['pengajuan', pengajuanId],
+    queryFn: () => ambilDetailPengajuan(pengajuanId),
+    enabled: !!pengajuanId,
+  })
+
   const unggah = useMutation<
-    Dokumen,
+    RingkasUnggahDokumen,
     GalatApi,
-    { anggotaId: string; jenis: JenisDokumen; berkas: File }
+    { pengajuanAnggotaId: string; jenis: JenisDokumen; berkas: File }
   >({
     mutationFn: (v) => unggahDokumen(pengajuanId, v),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['dokumen', pengajuanId] }),
     onError: setGalat,
   })
 
-  // Untuk perorangan, satu anggota; kelompok punya beberapa. Kita tampilkan slot
-  // per (anggota, jenis) berdasarkan versi terakhir tiap jenis dari server.
-  const dokumenTerakhir = data ?? []
+  // Server mengirim SEMUA versi (flat); ambil versi terakhir per (anggota, jenis).
+  const semua = data ?? []
+  const terbaru = dokumenTerbaruPerKunci(semua)
+  // Anggota tunggal (perorangan) untuk memetakan slot yang belum punya dokumen.
+  const anggotaTunggal = detail?.anggota[0]?.id ?? ''
 
   return (
     <div className="konten" style={{ maxWidth: 480 }}>
@@ -71,16 +93,19 @@ export function UploadDokumen() {
       {data && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
           {JENIS_URUT.map((jenis) => {
-            const dok = dokumenTerakhir.find((d) => d.jenis === jenis)
+            const dok = terbaru.find((d) => d.jenis === jenis)
+            const anggotaId = dok?.pengajuanAnggotaId ?? anggotaTunggal
             return (
               <KartuDokumen
                 key={jenis}
                 jenis={jenis}
                 dokumen={dok}
+                riwayat={dok ? riwayatDokumen(semua, dok) : []}
+                bisaUnggah={anggotaId !== ''}
                 sedangUnggah={unggah.isPending && unggah.variables?.jenis === jenis}
-                onUnggah={(berkas, anggotaId) => {
+                onUnggah={(berkas) => {
                   setGalat(null)
-                  unggah.mutate({ anggotaId, jenis, berkas })
+                  unggah.mutate({ pengajuanAnggotaId: anggotaId, jenis, berkas })
                 }}
               />
             )
@@ -98,26 +123,30 @@ export function UploadDokumen() {
 function KartuDokumen({
   jenis,
   dokumen,
+  riwayat,
+  bisaUnggah,
   sedangUnggah,
   onUnggah,
 }: {
   jenis: JenisDokumen
   dokumen: Dokumen | undefined
+  riwayat: Dokumen[]
+  bisaUnggah: boolean
   sedangUnggah: boolean
-  onUnggah: (berkas: File, anggotaId: string) => void
+  onUnggah: (berkas: File) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [bukaRiwayat, setBukaRiwayat] = useState(false)
 
   const status = dokumen?.status ?? 'BELUM'
   const ditolak = status === 'REJECTED'
-  // Hanya boleh unggah bila belum ada dokumen ATAU dokumen ditolak (AC-03).
-  const bolehUnggah = bolehUnggahDokumen(dokumen)
+  // Hanya boleh unggah bila belum ada dokumen ATAU dokumen ditolak (AC-03),
+  // dan id anggota sudah diketahui.
+  const bolehUnggah = bolehUnggahDokumen(dokumen) && bisaUnggah
 
   function pilihBerkas(e: React.ChangeEvent<HTMLInputElement>) {
     const berkas = e.target.files?.[0]
-    if (berkas && dokumen) onUnggah(berkas, dokumen.pengajuanAnggotaId)
-    else if (berkas) onUnggah(berkas, '') // slot baru: server memetakan ke anggota tunggal
+    if (berkas) onUnggah(berkas)
     e.target.value = ''
   }
 
@@ -153,8 +182,8 @@ function KartuDokumen({
         </div>
       )}
 
-      {/* Riwayat versi (AC-03) — hanya bila ada versi > 1 atau riwayat tersedia. */}
-      {dokumen && (dokumen.riwayat?.length ?? 0) > 0 && (
+      {/* Riwayat versi (AC-03) — versi lama diturunkan dari daftar flat server. */}
+      {riwayat.length > 0 && (
         <div style={{ marginTop: 8 }}>
           <button
             type="button"
@@ -169,11 +198,11 @@ function KartuDokumen({
             }}
             onClick={() => setBukaRiwayat((v) => !v)}
           >
-            {bukaRiwayat ? 'Sembunyikan riwayat' : `Riwayat (${dokumen.riwayat?.length})`}
+            {bukaRiwayat ? 'Sembunyikan riwayat' : `Riwayat (${riwayat.length})`}
           </button>
           {bukaRiwayat && (
             <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12 }} className="redup">
-              {dokumen.riwayat?.map((r) => (
+              {riwayat.map((r) => (
                 <li key={r.versi}>
                   Versi {r.versi} {LABEL_STATUS[r.status] ?? r.status}{' '}
                   {new Date(r.diunggahPada).toLocaleDateString('id-ID')}
