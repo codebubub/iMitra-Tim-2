@@ -44,7 +44,14 @@ export function bacaEnvFile(path) {
   return hasil
 }
 
-/** Membaca .env root; menyalin dari .env.example kalau belum ada. */
+/**
+ * Membaca .env root; menyalin dari .env.example kalau belum ada.
+ *
+ * VARIABEL LINGKUNGAN NYATA MENANG atas isi .env — sama seperti dotenv. Itu yang
+ * membuat `BACKEND_PORT=8180 npm run dev` bisa dipakai saat port bawaan sedang
+ * ditahan sesuatu (mis. lapisan port Docker Desktop yang belum melepas), tanpa
+ * perlu menyunting .env yang dipakai bersama.
+ */
 export function muatEnvRoot({ onSalin } = {}) {
   const envPath = join(ROOT, '.env')
   const contohPath = join(ROOT, '.env.example')
@@ -55,7 +62,13 @@ export function muatEnvRoot({ onSalin } = {}) {
     copyFileSync(contohPath, envPath)
     onSalin?.()
   }
-  return bacaEnvFile(envPath)
+
+  const berkas = bacaEnvFile(envPath)
+  for (const kunci of Object.keys(berkas)) {
+    const dariLingkungan = process.env[kunci]
+    if (dariLingkungan !== undefined && dariLingkungan !== '') berkas[kunci] = dariLingkungan
+  }
+  return berkas
 }
 
 /**

@@ -201,6 +201,14 @@ async function bebaskanPort(port, label) {
   if (await tungguBebas(port, containers.length > 0 ? 45000 : 2000)) return true
 
   galat(`port ${port} (${label}) tidak bisa dibebaskan.`)
+  if (containers.length > 0 || pids.length === 0) {
+    // Kasus nyata di Windows: container sudah `Exited`, `netstat` tidak
+    // menampilkan listener apa pun, tetapi bind tetap EADDRINUSE — lapisan
+    // penerus port Docker Desktop belum melepasnya. Menyuruh orang "tutup
+    // prosesnya" tidak menolong; ini yang menolong.
+    info(`  coba: docker rm ${containers[0]?.nama ?? '<container>'} , atau restart Docker Desktop`)
+    info(`  atau jalankan di port lain: BACKEND_PORT=8180 FRONTEND_PORT=3100 MOCK_SLIK_PORT=9190 npm run dev`)
+  }
   return false
 }
 
