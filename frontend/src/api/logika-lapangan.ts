@@ -37,6 +37,44 @@ export function kelasBadgeDokumen(status: StatusDokumen | 'BELUM'): string {
   return 'badge'
 }
 
+/**
+ * Server mengembalikan SATU baris per versi (daftar flat). Layar butuh versi
+ * TERAKHIR per (anggota, jenis) — inilah yang punya status berlaku (AC-03).
+ * Diurut versi menurun lalu diambil yang pertama per kunci.
+ */
+export function dokumenTerbaruPerKunci<
+  T extends { pengajuanAnggotaId: string; jenis: string; versi: number },
+>(semua: T[]): T[] {
+  const urut = [...semua].sort((a, b) => b.versi - a.versi)
+  const terlihat = new Set<string>()
+  const hasil: T[] = []
+  for (const d of urut) {
+    const kunci = `${d.pengajuanAnggotaId}:${d.jenis}`
+    if (terlihat.has(kunci)) continue
+    terlihat.add(kunci)
+    hasil.push(d)
+  }
+  return hasil
+}
+
+/**
+ * Riwayat versi LAMA (di bawah versi terakhir) untuk satu (anggota, jenis),
+ * urut versi menurun (AC-03). Versi terakhir sendiri TIDAK termasuk — ia
+ * ditampilkan sebagai kartu utama.
+ */
+export function riwayatDokumen<
+  T extends { pengajuanAnggotaId: string; jenis: string; versi: number },
+>(semua: T[], acuan: { pengajuanAnggotaId: string; jenis: string; versi: number }): T[] {
+  return semua
+    .filter(
+      (d) =>
+        d.pengajuanAnggotaId === acuan.pengajuanAnggotaId &&
+        d.jenis === acuan.jenis &&
+        d.versi < acuan.versi,
+    )
+    .sort((a, b) => b.versi - a.versi)
+}
+
 /* ------------------------------------------------------------------ S-06 */
 
 /**
@@ -50,12 +88,17 @@ export function tolakDinonaktifkan(kodeAlasan: string, sedangKirim: boolean): bo
 /* ------------------------------------------------------------------ S-07 */
 
 /**
- * S-07 (AO): survei boleh dikirim jika ada minimal satu foto DAN omzet harian
- * terisi (> 0). Koordinat opsional — AO bisa di lokasi tanpa GPS (fallback
- * manual), jadi gagal ambil koordinat tidak boleh memblokir pengiriman.
+ * S-07 (AO): survei boleh dikirim jika ada tepat satu foto, omzet harian terisi
+ * (> 0), DAN koordinat terisi. Kontrak server mewajibkan latitude+longitude —
+ * layar menyediakan fallback isian manual bila GPS gagal, jadi koordinat selalu
+ * bisa dilengkapi tanpa GPS.
  */
-export function bolehKirimSurvei(input: { jumlahFoto: number; omzetHarian: number }): boolean {
-  return input.jumlahFoto >= 1 && input.omzetHarian > 0
+export function bolehKirimSurvei(input: {
+  jumlahFoto: number
+  omzetHarian: number
+  adaKoordinat: boolean
+}): boolean {
+  return input.jumlahFoto >= 1 && input.omzetHarian > 0 && input.adaKoordinat
 }
 
 /**

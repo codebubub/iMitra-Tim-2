@@ -4,11 +4,13 @@ import {
   anggotaUntukPayload,
   bolehKirimSurvei,
   bolehUnggahDokumen,
+  dokumenTerbaruPerKunci,
   formatRibuan,
   hanyaDigit,
   hitungTotalPlafon,
   kelasBadgeDokumen,
   nilaiSurveiDinonaktifkan,
+  riwayatDokumen,
   tolakDinonaktifkan,
 } from './logika-lapangan'
 import type { AnggotaBaru } from './pengajuan'
@@ -51,6 +53,37 @@ describe('kelasBadgeDokumen — warna semantik konsisten', () => {
   })
 })
 
+describe('S-05/06 — dokumenTerbaruPerKunci & riwayatDokumen (AC-03)', () => {
+  // Server mengembalikan SEMUA versi (flat). AC-03: unggah ulang membuat versi
+  // baru dan versi lama tetap tersimpan sebagai riwayat.
+  const flat = [
+    { id: 'a1', pengajuanAnggotaId: 'AGG', jenis: 'KTP', versi: 1, status: 'REJECTED' },
+    { id: 'a2', pengajuanAnggotaId: 'AGG', jenis: 'KTP', versi: 2, status: 'MENUNGGU' },
+    { id: 'b1', pengajuanAnggotaId: 'AGG', jenis: 'KK', versi: 1, status: 'VERIFIED' },
+  ]
+
+  it('mengambil versi TERTINGGI per (anggota, jenis)', () => {
+    const terbaru = dokumenTerbaruPerKunci(flat)
+    const ktp = terbaru.find((d) => d.jenis === 'KTP')
+    const kk = terbaru.find((d) => d.jenis === 'KK')
+    expect(terbaru).toHaveLength(2)
+    expect(ktp?.versi).toBe(2)
+    expect(ktp?.status).toBe('MENUNGGU')
+    expect(kk?.versi).toBe(1)
+  })
+
+  it('riwayat berisi versi lama (di bawah acuan), urut menurun, tanpa versi acuan', () => {
+    const acuan = { pengajuanAnggotaId: 'AGG', jenis: 'KTP', versi: 2 }
+    const riwayat = riwayatDokumen(flat, acuan)
+    expect(riwayat.map((r) => r.versi)).toEqual([1])
+  })
+
+  it('tanpa versi lama, riwayat kosong', () => {
+    const acuan = { pengajuanAnggotaId: 'AGG', jenis: 'KK', versi: 1 }
+    expect(riwayatDokumen(flat, acuan)).toEqual([])
+  })
+})
+
 /* ------------------------------------------------------------------ S-06 */
 describe('S-06 VerifikasiDokumen — tolakDinonaktifkan', () => {
   it('tombol Kirim penolakan NONAKTIF saat kode alasan belum dipilih', () => {
@@ -72,16 +105,22 @@ describe('S-06 VerifikasiDokumen — tolakDinonaktifkan', () => {
 
 /* ------------------------------------------------------------------ S-07 */
 describe('S-07 Survei AO — bolehKirimSurvei (AC-04)', () => {
-  it('boleh kirim dengan >=1 foto dan omzet > 0', () => {
-    expect(bolehKirimSurvei({ jumlahFoto: 1, omzetHarian: 500_000 })).toBe(true)
+  const dasar = { jumlahFoto: 1, omzetHarian: 500_000, adaKoordinat: true }
+
+  it('boleh kirim dengan 1 foto, omzet > 0, dan koordinat terisi', () => {
+    expect(bolehKirimSurvei(dasar)).toBe(true)
   })
 
-  it('TIDAK boleh kirim tanpa foto (minimal 1 foto)', () => {
-    expect(bolehKirimSurvei({ jumlahFoto: 0, omzetHarian: 500_000 })).toBe(false)
+  it('TIDAK boleh kirim tanpa foto', () => {
+    expect(bolehKirimSurvei({ ...dasar, jumlahFoto: 0 })).toBe(false)
   })
 
   it('TIDAK boleh kirim tanpa omzet', () => {
-    expect(bolehKirimSurvei({ jumlahFoto: 2, omzetHarian: 0 })).toBe(false)
+    expect(bolehKirimSurvei({ ...dasar, omzetHarian: 0 })).toBe(false)
+  })
+
+  it('TIDAK boleh kirim tanpa koordinat — server mewajibkan lat & lng', () => {
+    expect(bolehKirimSurvei({ ...dasar, adaKoordinat: false })).toBe(false)
   })
 })
 
