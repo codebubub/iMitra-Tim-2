@@ -232,49 +232,47 @@ Rancangan lengkap — model data, 32 endpoint, keamanan, deployment — ada di
 
 ## 4. Status Functional Requirements
 
-<!-- ISI: kolom Status dan PR. Kolom FR / Requirement / Prioritas sudah benar sesuai brief §3
-     — jangan diubah, penilai mencocokkannya.
-     Nilai Status yang diizinkan, pilih satu:
-       - Selesai & teruji  : lolos AC terkait, ada test otomatis, sudah di-merge ke main
-       - Selesai           : jalan dan di-merge, tetapi belum ada test otomatis
-       - Sebagian          : hanya sebagian AC terpenuhi. WAJIB dijelaskan di bagian 5
-       - Tidak dikerjakan  : sengaja dibuang. WAJIB dijelaskan di bagian 5
-     Jangan pakai "In progress" di tag v1.0.0 — pada saat itu tidak ada lagi yang sedang jalan.
-     Kolom PR: nomor PR yang menyelesaikannya, mis. #14, #21.
-     Perbarui tabel ini setiap kali PR di-merge, bukan sekali di akhir. -->
+Status di bawah dibaca dari **kode dan keluaran runner**, bukan dari rencana. "Selesai &
+teruji" berarti tiga hal sekaligus: endpoint terdaftar, AC terkait punya berkas test
+otomatis, dan test itu lolos saat dijalankan. Penelusuran per AC ada di
+[`docs/TRACEABILITY.md`](docs/TRACEABILITY.md); cara mengujinya di
+[`docs/TESTING.md`](docs/TESTING.md).
+
+Kolom PR diisi tanda hubung: seluruh pekerjaan disatukan lewat merge langsung ke `main`
+dari branch per anggota, bukan lewat PR bernomor — riwayatnya ada di `git log`.
 
 ### P0 — WAJIB (batas lulus fungsional)
 
 | FR | Requirement | Prioritas | Status | PR |
 |---|---|---|---|---|
-| FR-01 | Autentikasi & Otorisasi Berbasis Peran | P0 | Selesai & teruji |  |
-| FR-02 | Pengajuan Pembiayaan Mikro | P0 |  |  |
-| FR-03 | Upload & Verifikasi Dokumen | P0 |  |  |
-| FR-04 | Survei Lapangan (OTS) | P0 |  |  |
-| FR-05 | SLIK Check | P0 |  |  |
-| FR-06 | Skoring Kelayakan Mikro | P0 |  |  |
-| FR-07 | Perhitungan Margin / Nisbah | P0 |  |  |
-| FR-08 | Approval Berjenjang | P0 |  |  |
-| FR-09 | Audit Trail | P0 | Selesai & teruji |  |
+| FR-01 | Autentikasi & Otorisasi Berbasis Peran | P0 | Selesai & teruji | — |
+| FR-02 | Pengajuan Pembiayaan Mikro | P0 | Selesai & teruji | — |
+| FR-03 | Upload & Verifikasi Dokumen | P0 | Selesai & teruji | — |
+| FR-04 | Survei Lapangan (OTS) | P0 | Selesai & teruji | — |
+| FR-05 | SLIK Check | P0 | Selesai & teruji | — |
+| FR-06 | Skoring Kelayakan Mikro | P0 | Selesai & teruji | — |
+| FR-07 | Perhitungan Margin / Nisbah | P0 | Selesai & teruji | — |
+| FR-08 | Approval Berjenjang | P0 | Selesai & teruji | — |
+| FR-09 | Audit Trail | P0 | Selesai & teruji | — |
 
 ### P1 — SEHARUSNYA (nilai penuh butuh ini)
 
 | FR | Requirement | Prioritas | Status | PR |
 |---|---|---|---|---|
-| FR-10 | Pembiayaan Kelompok (Majelis) | P1 |  |  |
-| FR-11 | Notifikasi Perubahan Status | P1 | Sebagian |  |
-| FR-12 | Dashboard Pipeline | P1 |  |  |
-| FR-13 | Parameter Terkonfigurasi | P1 |  |  |
+| FR-10 | Pembiayaan Kelompok (Majelis) | P1 | Selesai & teruji | — |
+| FR-11 | Notifikasi Perubahan Status | P1 | Selesai & teruji | — |
+| FR-12 | Dashboard Pipeline | P1 | Selesai & teruji | — |
+| FR-13 | Parameter Terkonfigurasi | P1 | Selesai & teruji | — |
 
 ### P2 — BOLEH (hanya kalau P0 dan P1 tuntas dan teruji)
 
 | FR | Requirement | Prioritas | Status | PR |
 |---|---|---|---|---|
-| FR-14 | Simulasi angsuran murabahah & proyeksi bagi hasil musyarakah | P2 |  |  |
-| FR-15 | Ekspor daftar pengajuan ke CSV | P2 |  |  |
-| FR-16 | Mode draft offline untuk AO di lapangan | P2 |  |  |
-| FR-17 | Deteksi lokasi palsu (mock location) pada survei lapangan | P2 |  |  |
-| FR-18 | Laporan Turn-Around Time per tahap dan per petugas | P2 |  |  |
+| FR-14 | Simulasi angsuran murabahah & proyeksi bagi hasil musyarakah | P2 | Tidak dikerjakan | — |
+| FR-15 | Ekspor daftar pengajuan ke CSV | P2 | Tidak dikerjakan | — |
+| FR-16 | Mode draft offline untuk AO di lapangan | P2 | Tidak dikerjakan | — |
+| FR-17 | Deteksi lokasi palsu (mock location) pada survei lapangan | P2 | Tidak dikerjakan | — |
+| FR-18 | Laporan Turn-Around Time per tahap dan per petugas | P2 | Tidak dikerjakan | — |
 
 Penelusuran rinci FR → endpoint → test → PR ada di [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md).
 
