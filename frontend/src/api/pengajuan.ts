@@ -137,13 +137,17 @@ export function tambahAnggota(id: string, anggota: AnggotaBaru): Promise<Anggota
   })
 }
 
-/** PATCH /api/pengajuan/{id}/anggota/{anggotaId} — ubah plafon/nasabah saat DRAFT. */
+/**
+ * PATCH /api/pengajuan/{id}/anggota/{anggotaId} — ubah plafon anggota saat DRAFT.
+ * Server (zod `skemaUbahAnggota`) HANYA menerima `plafonDiajukan`; field lain
+ * ditolak. Perubahan nama/nasabah tidak didukung endpoint ini.
+ */
 export function ubahAnggota(
   id: string,
   anggotaId: string,
-  input: Partial<Pick<AnggotaBaru, 'nama' | 'plafonDiajukan'>>,
-): Promise<Anggota> {
-  return api<Anggota>(`/api/pengajuan/${id}/anggota/${anggotaId}`, {
+  input: { plafonDiajukan: number },
+): Promise<Pick<Anggota, 'id' | 'plafonDiajukan'> & { urutan?: number }> {
+  return api(`/api/pengajuan/${id}/anggota/${anggotaId}`, {
     method: 'PATCH',
     body: JSON.stringify(input),
   })
