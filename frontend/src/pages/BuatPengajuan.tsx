@@ -12,8 +12,8 @@ import {
 } from '../api/pengajuan'
 import { PanelGalat } from '../components/PanelGalat'
 import {
-  anggotaLengkap,
   anggotaUntukPayload,
+  bolehKirimPengajuan,
   formatRibuan,
   hanyaDigit,
   hitungTotalPlafon,
@@ -113,17 +113,19 @@ export function BuatPengajuan() {
 
   const sedangKirim = simpanDraft.isPending || kirim.isPending
 
-  // "Kirim" hanya aktif jika seluruh baris anggota yang akan dikirim lengkap
-  // (nama, NIK 16 digit, alamat, jenis usaha, plafon > 0). "Simpan draft" tetap
-  // boleh walau belum lengkap — AO menyimpan draf setengah jadi di lapangan.
-  const semuaLengkap = anggotaUntukPayload(jenisNasabah, anggota).every((a) =>
-    anggotaLengkap({
+  // "Kirim" hanya aktif jika komposisi anggota sah untuk dikirim: perorangan =
+  // satu anggota lengkap, majelis = 3–10 anggota lengkap (FR-10). Server tetap
+  // penegak akhir; ini mencegah 422 yang membingungkan di lapangan. "Simpan
+  // draft" tetap boleh walau belum lengkap — AO menyimpan draf setengah jadi.
+  const semuaLengkap = bolehKirimPengajuan(
+    jenisNasabah,
+    anggota.map((a) => ({
       nama: a.nama.trim(),
       nik: a.nik.replace(/\D/g, ''),
       alamat: a.alamat.trim(),
       jenisUsaha: a.jenisUsaha.trim(),
       plafonDiajukan: hanyaDigit(a.plafon),
-    }),
+    })),
   )
 
   function lanjut(e: FormEvent) {
@@ -324,6 +326,7 @@ export function BuatPengajuan() {
             </button>
             <p className="redup" style={{ fontSize: 12, marginTop: 4 }}>
               Minimal 3, maksimal 10 anggota
+              {anggota.length < 3 && ' — tambah anggota hingga minimal 3 sebelum mengirim'}
             </p>
 
             <div

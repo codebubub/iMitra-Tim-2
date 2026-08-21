@@ -142,6 +142,21 @@ export function anggotaLengkap(a: AnggotaBaru): boolean {
   )
 }
 
+/**
+ * S-03: apakah pengajuan boleh DIKIRIM (bukan hanya disimpan draft).
+ * Perorangan = tepat satu anggota lengkap; majelis = 3–10 anggota lengkap
+ * (FR-10, structural — bukan parameter bisnis; server tetap penegak akhirnya).
+ * Ini kenyamanan UI: mencegah 422 yang membingungkan saat submit kelompok < 3.
+ */
+export const MIN_ANGGOTA_MAJELIS = 3
+export const MAKS_ANGGOTA_MAJELIS = 10
+export function bolehKirimPengajuan(jenisNasabah: JenisNasabah, anggota: AnggotaBaru[]): boolean {
+  const dipakai = anggotaUntukPayload(jenisNasabah, anggota)
+  if (!dipakai.every(anggotaLengkap)) return false
+  if (jenisNasabah === 'PERORANGAN') return dipakai.length === 1
+  return dipakai.length >= MIN_ANGGOTA_MAJELIS && dipakai.length <= MAKS_ANGGOTA_MAJELIS
+}
+
 /* ---------------------------------------------------------- util bersama */
 
 /** Ambil hanya digit dari input teks (untuk NIK & rupiah). */
