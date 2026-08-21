@@ -86,7 +86,41 @@ async function rentangBerlaku(grade: number, akad: Akad): Promise<HasilMargin['r
 }
 
 /** GET — nilai tersimpan + rentang yang berlaku untuk grade final saat ini. */
-export async function bacaMargin(pengajuanId: string): Promise<HasilMargin> {
+/**
+ * GET — membaca margin/nisbah beserta rentang yang berlaku.
+ *
+ * MENGEMBALIKAN `null` BILA SKORING BELUM DIJALANKAN, bukan melempar
+ * PelanggaranAturan.
+ *
+ * Sebelumnya endpoint ini memakai `muatKonteks()` yang sama dengan POST,
+ * sehingga membuka layar margin pada pengajuan yang belum diskor menjawab
+ * HTTP 422 "ATURAN_BISNIS_DILANGGAR". Itu salah dua kali:
+ *
+ *   1. SECARA SEMANTIK. 422 berarti permintaan yang bentuknya benar tetapi
+ *      melanggar aturan bisnis — tepat untuk aksi TULIS. Membaca sesuatu yang
+ *      belum ada bukan pelanggaran; tidak ada aturan yang dilanggar oleh
+ *      seseorang yang membuka sebuah layar.
+ *   2. BAGI PENGGUNANYA. Layar S-10 menerjemahkan setiap kegagalan muat menjadi
+ *      "Rentang margin tidak dapat dimuat dari server", sehingga analis dikirim
+ *      memeriksa parameter dan koneksi — padahal yang kurang hanyalah skoring,
+ *      satu langkah yang bisa ia kerjakan sendiri saat itu juga.
+ *
+ * INVARIAN yang dipakai layar: `null` HANYA berarti skoring belum ada. Bila
+ * skoring sudah ada, fungsi ini selalu mengembalikan objek — dengan
+ * `marginPersen: null` bila margin memang belum ditetapkan. Jadi layar bisa
+ * membedakan "belum bisa diisi" dari "belum diisi" tanpa field tambahan.
+ *
+ * Pengajuan yang benar-benar tidak ada tetap melempar TidakDitemukan (404):
+ * itu memang bukan sumber daya yang bisa dibaca siapa pun.
+ */
+export async function bacaMargin(pengajuanId: string): Promise<HasilMargin | null> {
+  const pengajuanAda = await prisma.pengajuan.findUnique({
+    where: { id: pengajuanId },
+    select: { id: true, skoring: { select: { id: true }, take: 1 } },
+  })
+  if (!pengajuanAda) throw new TidakDitemukan('Pengajuan tidak ditemukan')
+  if (pengajuanAda.skoring.length === 0) return null
+
   const { pengajuan, skoring } = await muatKonteks(pengajuanId)
   const akad = pengajuan.akad as Akad
 
