@@ -343,9 +343,9 @@ export function Skoring() {
           )}
 
           <h2>Rincian Komponen Skor</h2>
-          <div className="kartu" style={{ padding: 0, marginTop: 'var(--sp-3)' }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="tabel">
+          <div className="tabel-bungkus" style={{ marginTop: 'var(--sp-3)' }}>
+            <div>
+              <table className="tabel tabel--kartu">
                 <thead>
                   <tr>
                     <th>Komponen</th>
@@ -358,20 +358,20 @@ export function Skoring() {
                 <tbody>
                   {rincianTerurut.map((r) => (
                     <tr key={r.kodeKomponen}>
-                      <td>{LABEL_KOMPONEN[r.kodeKomponen]}</td>
-                      <td className="angka">{angkaBiasa(Number(r.bobot))}</td>
-                      <td className="angka">{tigaDesimal(Number(r.nilaiMentah))}</td>
+                      <td data-label="Komponen">{LABEL_KOMPONEN[r.kodeKomponen]}</td>
+                      <td data-label="Bobot" className="angka">{angkaBiasa(Number(r.bobot))}</td>
+                      <td data-label="Nilai mentah" className="angka">{tigaDesimal(Number(r.nilaiMentah))}</td>
                       {/* 3 desimal, tidak dibulatkan (BR-07, AC-07) */}
-                      <td className="angka">{tigaDesimal(Number(r.skorKomponen))}</td>
-                      <td className="angka">{tigaDesimal(Number(r.kontribusi))}</td>
+                      <td data-label="Skor komponen" className="angka">{tigaDesimal(Number(r.skorKomponen))}</td>
+                      <td data-label="Kontribusi" className="angka">{tigaDesimal(Number(r.kontribusi))}</td>
                     </tr>
                   ))}
                   <tr style={gaya.barisTotal}>
-                    <td>Total</td>
-                    <td className="angka">{angkaBiasa(totalBobot)}</td>
-                    <td className="angka">—</td>
-                    <td className="angka">—</td>
-                    <td className="angka">{tigaDesimal(totalKontribusi)}</td>
+                    <td data-label="Komponen">Total</td>
+                    <td data-label="Bobot" className="angka">{angkaBiasa(totalBobot)}</td>
+                    <td data-label="Nilai mentah" className="angka">—</td>
+                    <td data-label="Skor komponen" className="angka">—</td>
+                    <td data-label="Kontribusi" className="angka">{tigaDesimal(totalKontribusi)}</td>
                   </tr>
                 </tbody>
               </table>

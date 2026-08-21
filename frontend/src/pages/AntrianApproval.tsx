@@ -163,16 +163,17 @@ export function AntrianApproval() {
 
       {antrian.length > 0 && (
         <div
+          className={aktif ? 'dua-kolom' : 'dua-kolom dua-kolom--tunggal'}
           style={{
-            display: 'grid',
-            gridTemplateColumns: aktif ? 'minmax(0, 1fr) 420px' : '1fr',
+            // Lebar panel sebagai variabel, bukan angka tetap: di bawah 980px
+            // kelasnya menumpuk kedua kolom (lihat theme.css).
+            '--kolom-samping': '420px',
             gap: 'var(--sp-5)',
             marginTop: 'var(--sp-5)',
-            alignItems: 'start',
-          }}
+          } as React.CSSProperties}
         >
-          <div className="kartu" style={{ padding: 0, overflowX: 'auto' }}>
-            <table className="tabel">
+          <div className="tabel-bungkus">
+            <table className="tabel tabel--kartu">
               <thead>
                 <tr>
                   <th>Nomor Referensi</th>
@@ -196,12 +197,12 @@ export function AntrianApproval() {
                       ...(a.id === dipilih ? gaya.barisTerpilih : {}),
                     }}
                   >
-                    <td className="mono">{a.nomorReferensi}</td>
-                    <td className="angka">{rupiah(a.totalPlafon)}</td>
-                    <td>
+                    <td data-label="Nomor Referensi" className="mono">{a.nomorReferensi}</td>
+                    <td data-label="Total Plafon" className="angka">{rupiah(a.totalPlafon)}</td>
+                    <td data-label="Status">
                       <BadgeStatus status={a.status} />
                     </td>
-                    <td>
+                    <td data-label="Jalur Approval">
                       {/*
                        * Jumlah level tidak dikirim per baris oleh endpoint
                        * antrian saat ini, jadi rantai digambar sampai level

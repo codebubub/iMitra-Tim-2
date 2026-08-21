@@ -429,8 +429,8 @@ export function SlikCheck() {
             Riwayat panggilan ({daftarRiwayat.length})
           </button>
           {riwayatTerbuka && (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="tabel">
+            <div className="tabel-bungkus">
+              <table className="tabel tabel--kartu">
                 <thead>
                   <tr>
                     <th>Waktu</th>
@@ -442,8 +442,8 @@ export function SlikCheck() {
                 <tbody>
                   {daftarRiwayat.map((r) => (
                     <tr key={r.id}>
-                      <td>{waktuIndonesia(r.diperiksaPada)}</td>
-                      <td>
+                      <td data-label="Waktu">{waktuIndonesia(r.diperiksaPada)}</td>
+                      <td data-label="Hasil panggilan">
                         <span
                           className={
                             r.statusPanggilan === 'OK'
@@ -455,8 +455,8 @@ export function SlikCheck() {
                         </span>
                       </td>
                       {/* Tanda hubung untuk setiap panggilan gagal. */}
-                      <td className="angka">{r.kolektibilitas ?? '—'}</td>
-                      <td className="mono">{r.referenceId ?? '—'}</td>
+                      <td data-label="Kolektibilitas" className="angka">{r.kolektibilitas ?? '—'}</td>
+                      <td data-label="Referensi" className="mono">{r.referenceId ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>

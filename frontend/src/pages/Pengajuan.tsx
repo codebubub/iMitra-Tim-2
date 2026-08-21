@@ -34,8 +34,8 @@ export function Pengajuan() {
       {error && <p className="redup">Gagal memuat data.</p>}
 
       {data && (
-        <div className="kartu" style={{ padding: 0, overflowX: 'auto' }}>
-          <table className="tabel">
+        <div className="tabel-bungkus">
+          <table className="tabel tabel--kartu">
             <thead>
               <tr>
                 <th>Nomor Referensi</th>
@@ -48,11 +48,11 @@ export function Pengajuan() {
             <tbody>
               {data.map((p) => (
                 <tr key={p.id}>
-                  <td className="mono">{p.nomorReferensi}</td>
-                  <td>{p.jenisNasabah === 'KELOMPOK' ? `Kelompok` : p.nomorReferensi}</td>
-                  <td>{p.akad}</td>
-                  <td className="angka">{rupiah(p.totalPlafon)}</td>
-                  <td><BadgeStatus status={p.status} /></td>
+                  <td data-label="Nomor Referensi" className="mono">{p.nomorReferensi}</td>
+                  <td data-label="Nasabah">{p.jenisNasabah === 'KELOMPOK' ? `Kelompok` : p.nomorReferensi}</td>
+                  <td data-label="Akad">{p.akad}</td>
+                  <td data-label="Total Plafon" className="angka">{rupiah(p.totalPlafon)}</td>
+                  <td data-label="Status"><BadgeStatus status={p.status} /></td>
                 </tr>
               ))}
               {data.length === 0 && (

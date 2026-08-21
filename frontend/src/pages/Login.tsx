@@ -47,6 +47,9 @@ export function Login() {
           <label htmlFor="username">Nama pengguna</label>
           <input
             id="username"
+            // Satu-satunya field pada layar tanpa isi lain, jadi tidak ada
+            // fokus yang direbut dari pengguna pembaca layar.
+            autoFocus
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
@@ -68,6 +71,7 @@ export function Login() {
             <button
               type="button"
               className="tombol tombol--sekunder"
+              style={{ flex: 'none' }}
               onClick={() => setLihatSandi((v) => !v)}
               aria-label={lihatSandi ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
             >
@@ -76,7 +80,12 @@ export function Login() {
           </div>
         </div>
 
-        <button type="submit" className="tombol" style={{ width: '100%', marginTop: 24 }} disabled={mengirim}>
+        <button
+          type="submit"
+          className="tombol tombol--blok"
+          style={{ marginTop: 24 }}
+          disabled={mengirim}
+        >
           {mengirim ? 'Memproses...' : 'Masuk'}
         </button>
 

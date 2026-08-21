@@ -112,12 +112,8 @@ export function VerifikasiDokumen() {
 
       {data && (
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(240px, 40%) 1fr',
-            gap: 16,
-            marginTop: 12,
-          }}
+          className="dua-kolom dua-kolom--kiri"
+          style={{ gap: 16, marginTop: 12 }}
         >
           {/* Kolom kiri: daftar */}
           <div className="kartu" style={{ padding: 0 }}>

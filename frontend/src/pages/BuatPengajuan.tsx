@@ -398,13 +398,17 @@ function IndikatorLangkah({ langkah, kelompok }: { langkah: number; kelompok: bo
   const daftar = kelompok
     ? ['1 Nasabah', '2 Pembiayaan', '3 Anggota']
     : ['1 Nasabah', '2 Pembiayaan']
+  // flexWrap + minWidth 0: badge memakai white-space: nowrap, jadi tiga label
+  // sekaligus tidak muat di layar 390px. Tanpa izin membungkus, deretan ini
+  // melebarkan SELURUH halaman sehingga bisa digeser ke samping — bukan hanya
+  // steppernya sendiri yang terpotong.
   return (
-    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
       {daftar.map((t, i) => (
         <span
           key={t}
           className={i + 1 === langkah ? 'badge badge--info' : 'badge'}
-          style={{ flex: 1, textAlign: 'center' }}
+          style={{ flex: '1 1 auto', minWidth: 0, textAlign: 'center' }}
         >
           {t}
         </span>

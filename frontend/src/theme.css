@@ -10,17 +10,39 @@
  *
  * Nada: tenang, padat, institusional. Ini alat back-office perbankan yang
  * dipakai berjam-jam, bukan aplikasi konsumen. Tanpa gradien, tanpa ilustrasi.
+ *
+ * ------------------------------------------------------------------------
+ * CATATAN REVISI — kenapa berkas ini bertambah panjang
+ *
+ * Versi pertama sudah rapi di layar lebar, tetapi tiga hal baru terlihat saat
+ * dipakai sungguhan:
+ *
+ *   1. Di ponsel, sidebar menjadi baris yang di-scroll ke samping. Tombol
+ *      "Keluar" dan identitas pengguna terdorong ke luar layar, dan tujuh menu
+ *      berebut ruang dengan judul halaman. AO bekerja di lapangan (NFR-08),
+ *      jadi ini bukan kasus pinggiran — itu kondisi kerja sehari-harinya.
+ *   2. Tabel dengan enam kolom memaksa scroll horizontal di ponsel. Scroll
+ *      horizontal pada tabel data adalah cara tercepat membuat orang kehilangan
+ *      baris yang sedang dibacanya.
+ *   3. Target sentuh setinggi 32px meleset terus di layar sentuh.
+ *
+ * Yang TIDAK diubah: palet, tipografi, dan nada visualnya. Perbaikan di sini
+ * soal ergonomi dan hierarki, bukan mempercantik.
+ * ------------------------------------------------------------------------
  */
 
 :root {
   /* Warna */
   --warna-primer: #0f6b5c;
   --warna-primer-hover: #0b564a;
+  --warna-primer-lembut: #e6f0ee;
   --warna-aksen: #c08a2e;
 
   --warna-latar: #f7f8f7;
   --warna-permukaan: #ffffff;
+  --warna-permukaan-alt: #fbfcfb;
   --warna-garis: #e3e6e4;
+  --warna-garis-kuat: #cdd3d0;
 
   --teks-utama: #16211e;
   --teks-sekunder: #5a6763;
@@ -56,9 +78,22 @@
   --radius-tombol: 6px;
   --radius-badge: 999px;
 
-  --lebar-sidebar: 240px;
+  --lebar-sidebar: 244px;
   --tinggi-topbar: 56px;
   --lebar-konten-maks: 1200px;
+
+  /*
+   * Target sentuh minimum. 44px adalah angka yang dipakai pedoman aksesibilitas
+   * Apple dan WCAG 2.5.5; di bawah itu jari orang dewasa mulai meleset.
+   * Dipakai HANYA di layar sentuh/sempit supaya tampilan desktop tetap padat.
+   */
+  --tinggi-sentuh: 44px;
+
+  /* Bayangan hanya untuk lapisan yang benar-benar melayang (drawer, dropdown) */
+  --bayang-melayang: 0 12px 32px rgba(22, 33, 30, 0.18);
+  --bayang-lekat: 0 1px 0 var(--warna-garis);
+
+  --transisi: 140ms ease;
 }
 
 *,
@@ -81,6 +116,8 @@ body {
   color: var(--teks-utama);
   background: var(--warna-latar);
   -webkit-font-smoothing: antialiased;
+  /* Menahan iOS memperbesar teks saat layar diputar ke lanskap */
+  -webkit-text-size-adjust: 100%;
 }
 
 h1 {
@@ -88,12 +125,28 @@ h1 {
   line-height: 32px;
   font-weight: 600;
   margin: 0;
+  letter-spacing: -0.01em;
 }
 h2 {
   font-size: 18px;
   line-height: 26px;
   font-weight: 600;
   margin: 0;
+}
+h3 {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+  margin: 0;
+}
+
+a {
+  color: var(--warna-primer);
+  text-decoration-color: var(--warna-garis-kuat);
+  text-underline-offset: 2px;
+}
+a:hover {
+  color: var(--warna-primer-hover);
 }
 
 label {
@@ -110,20 +163,105 @@ select,
 textarea {
   width: 100%;
   padding: 10px var(--sp-3);
-  font: inherit;
+  /*
+   * 16px di ponsel, bukan 14px. Safari iOS memperbesar seluruh halaman secara
+   * otomatis ketika input berukuran di bawah 16px mendapat fokus — halaman
+   * "melompat" dan pengguna kehilangan posisinya. Ini perilaku browser yang
+   * tidak bisa dimatikan; satu-satunya obatnya adalah ukuran fontnya.
+   */
+  font-family: inherit;
+  font-size: 16px;
   color: var(--teks-utama);
   background: var(--warna-permukaan);
-  border: 1px solid var(--warna-garis);
-  border-radius: var(--radius-kartu);
+  border: 1px solid var(--warna-garis-kuat);
+  border-radius: var(--radius-tombol);
+  transition: border-color var(--transisi), box-shadow var(--transisi);
+}
+@media (min-width: 721px) {
+  input,
+  select,
+  textarea {
+    font-size: 14px;
+  }
+}
+input:hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) {
+  border-color: var(--teks-redup);
+}
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--warna-latar);
+  color: var(--teks-redup);
+  cursor: not-allowed;
+}
+textarea {
+  min-height: 88px;
+  resize: vertical;
 }
 
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 button:focus-visible,
-a:focus-visible {
+a:focus-visible,
+[tabindex]:focus-visible {
   outline: 2px solid var(--warna-primer);
   outline-offset: 2px;
+}
+
+/* Teks bantuan di bawah field: menjelaskan aturan SEBELUM orang salah isi */
+.bantuan {
+  display: block;
+  margin-top: var(--sp-1);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--teks-redup);
+}
+
+/*
+ * Teks khusus pembaca layar. Tetap dibacakan, tidak pernah terlihat.
+ * `clip` yang usang sengaja dipertahankan berdampingan dengan `clip-path`
+ * karena sebagian pembaca layar lama masih mengandalkannya.
+ */
+.sr-saja {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * Kartu yang bisa diketuk. Kartu statistik di dashboard berfungsi sebagai
+ * filter status (FR-12), dan ditulis sebagai <button> — bukan <div onClick> —
+ * supaya bisa dicapai Tab dan ditekan Enter/Spasi tanpa handler tambahan.
+ */
+.kartu--klik {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color var(--transisi), background var(--transisi),
+    box-shadow var(--transisi);
+}
+.kartu--klik:hover {
+  border-color: var(--warna-garis-kuat);
+  background: var(--warna-permukaan-alt);
+}
+.kartu--klik[data-dipilih='true'] {
+  border-color: var(--warna-primer);
+  background: var(--warna-primer-lembut);
+  /* Garis kedua di dalam supaya "terpilih" tidak disampaikan lewat warna saja */
+  box-shadow: inset 0 0 0 1px var(--warna-primer);
 }
 
 /* Komponen dasar ------------------------------------------------------- */
@@ -142,30 +280,63 @@ a:focus-visible {
   justify-content: center;
   gap: var(--sp-2);
   padding: 10px var(--sp-4);
+  min-height: 38px;
   font: inherit;
   font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
   border: 1px solid transparent;
   border-radius: var(--radius-tombol);
   cursor: pointer;
   background: var(--warna-primer);
   color: #fff;
+  transition: background var(--transisi), border-color var(--transisi),
+    color var(--transisi);
 }
 .tombol:hover:not(:disabled) {
   background: var(--warna-primer-hover);
+  color: #fff;
 }
-.tombol:disabled {
+.tombol:disabled,
+.tombol[aria-disabled='true'] {
   opacity: 0.5;
   cursor: not-allowed;
 }
 .tombol--sekunder {
-  background: transparent;
+  background: var(--warna-permukaan);
   color: var(--teks-utama);
-  border-color: var(--warna-garis);
+  border-color: var(--warna-garis-kuat);
+}
+.tombol--sekunder:hover:not(:disabled) {
+  background: var(--warna-latar);
+  color: var(--teks-utama);
+  border-color: var(--teks-redup);
 }
 .tombol--bahaya {
-  background: transparent;
+  background: var(--warna-permukaan);
   color: var(--warna-bahaya);
   border-color: var(--warna-bahaya);
+}
+.tombol--bahaya:hover:not(:disabled) {
+  background: var(--bg-bahaya);
+  color: var(--warna-bahaya);
+}
+.tombol--kecil {
+  padding: 6px var(--sp-3);
+  min-height: 32px;
+  font-size: 13px;
+}
+/* Di ponsel tombol utama sering enak dibuat selebar layar */
+.tombol--blok {
+  width: 100%;
+}
+
+/* Baris aksi: membungkus sendiri di layar sempit, tidak pernah terpotong */
+.aksi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
 }
 
 /*
@@ -224,6 +395,25 @@ a:focus-visible {
   white-space: nowrap;
 }
 
+/* Tabel ---------------------------------------------------------------- */
+
+/*
+ * Pembungkus tabel. Dipakai berpasangan dengan .tabel:
+ *
+ *   <div class="tabel-bungkus"><table class="tabel">...</table></div>
+ *
+ * Di layar lebar ia hanya kartu ber-scroll. Di ponsel, .tabel berubah bentuk
+ * menjadi kartu per baris (lihat blok media di bawah).
+ */
+.tabel-bungkus {
+  background: var(--warna-permukaan);
+  border: 1px solid var(--warna-garis);
+  border-radius: var(--radius-kartu);
+  overflow-x: auto;
+  /* Momentum scroll di iOS, dan garis bawah tabel tidak terpotong radius */
+  -webkit-overflow-scrolling: touch;
+}
+
 .tabel {
   width: 100%;
   border-collapse: collapse;
@@ -234,12 +424,32 @@ a:focus-visible {
   padding: var(--sp-3) var(--sp-4);
   text-align: left;
   border-bottom: 1px solid var(--warna-garis);
+  vertical-align: middle;
+}
+.tabel tbody tr:last-child td {
+  border-bottom: none;
 }
 .tabel th {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   color: var(--teks-sekunder);
-  background: var(--warna-latar);
+  background: var(--warna-permukaan-alt);
+  /*
+   * Header menempel saat tabel panjang di-scroll. Tanpa ini, membaca baris ke-30
+   * berarti menebak kolom mana yang sedang dilihat.
+   */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  box-shadow: var(--bayang-lekat);
+}
+.tabel tbody tr {
+  transition: background var(--transisi);
+}
+.tabel tbody tr:hover {
+  background: var(--warna-permukaan-alt);
 }
 /* Rupiah dan skor rata kanan dengan angka tabular */
 .tabel .angka,
@@ -257,6 +467,100 @@ a:focus-visible {
   color: var(--teks-redup);
 }
 
+/*
+ * Keadaan kosong. Kalimatnya harus menyebut LANGKAH BERIKUTNYA, bukan sekadar
+ * "tidak ada data" — orang yang baru membuka layar tidak tahu apa yang kurang.
+ */
+.kosong {
+  padding: var(--sp-6) var(--sp-4);
+  text-align: center;
+  color: var(--teks-redup);
+}
+
+/*
+ * Kerangka pemuatan. Lebih baik daripada tulisan "Memuat..." karena tinggi
+ * halaman tidak melompat ketika data datang.
+ */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-netral) 25%,
+    #f4f6f5 37%,
+    var(--bg-netral) 63%
+  );
+  background-size: 400% 100%;
+  border-radius: var(--radius-tombol);
+  animation: geser 1.4s ease infinite;
+}
+.skeleton--baris {
+  height: 14px;
+  margin: var(--sp-3) 0;
+}
+@keyframes geser {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/*
+ * Baris anggota yang ditolak. Ia sengaja TETAP DITAMPILKAN, bukan disembunyikan:
+ * total plafon dan jumlah level approval dihitung dari anggota aktif saja
+ * (ADR-0002), dan kalau barisnya hilang, pembaca hanya melihat angka berubah
+ * tanpa sebab yang terlihat. Coretan menjelaskan sebabnya di tempat.
+ *
+ * Coretan dibatalkan pada label kolom versi ponsel dan pada badge — mencoret
+ * kata "Ditolak" justru membuatnya sulit dibaca.
+ */
+.tabel tr[data-ditolak='true'] td {
+  text-decoration: line-through;
+  color: var(--teks-redup);
+}
+.tabel tr[data-ditolak='true'] td::before,
+.tabel tr[data-ditolak='true'] .badge {
+  text-decoration: none;
+}
+
+/*
+ * Tata letak daftar + panel samping (antrian approval, kelola pengguna,
+ * verifikasi dokumen).
+ *
+ * Lebar panelnya dulu ditulis sebagai angka tetap di gaya sebaris — 420px dan
+ * 360px. Di layar 390px, satu kolom saja sudah lebih lebar daripada layarnya,
+ * dan halaman ikut bisa digeser ke samping. Angka itu kini menjadi variabel,
+ * dan di bawah 980px kedua kolom ditumpuk: panel samping selebar layar jauh
+ * lebih mudah dipakai daripada panel sempit yang harus di-scroll dua arah.
+ *
+ * 980px, bukan 720px, karena panel 420px pada tablet 900px hanya menyisakan
+ * 480px untuk tabel di sebelahnya — cukup untuk ditampilkan, tidak cukup untuk
+ * dibaca.
+ */
+.dua-kolom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--kolom-samping, 380px);
+  gap: var(--sp-4);
+  align-items: start;
+}
+.dua-kolom--tunggal {
+  grid-template-columns: 1fr;
+}
+/*
+ * Varian dengan kolom sempit di KIRI (daftar dokumen + pratinjau). Ditulis
+ * sebagai kelas, bukan gaya sebaris, justru karena aturan penumpukan di bawah
+ * ini harus bisa mengalahkannya — gaya sebaris selalu menang atas media query,
+ * dan halamannya akan tetap dua kolom di layar 390px.
+ */
+.dua-kolom--kiri {
+  grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
+}
+@media (max-width: 980px) {
+  .dua-kolom {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Tata letak aplikasi --------------------------------------------------- */
 
 .layout {
@@ -264,47 +568,383 @@ a:focus-visible {
   grid-template-columns: var(--lebar-sidebar) 1fr;
   min-height: 100vh;
 }
+
+/* Lompat-ke-konten: hanya tampak saat difokus lewat keyboard */
+.lewati {
+  position: absolute;
+  left: var(--sp-3);
+  top: -60px;
+  z-index: 60;
+  background: var(--warna-permukaan);
+  transition: top var(--transisi);
+}
+.lewati:focus {
+  top: var(--sp-3);
+}
+
 .sidebar {
   background: var(--warna-permukaan);
   border-right: 1px solid var(--warna-garis);
-  padding: var(--sp-4);
+  padding: var(--sp-4) var(--sp-3);
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  /* Menu ikut saat halaman panjang di-scroll */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.sidebar__merek {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-3);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--warna-primer);
 }
 .sidebar a {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-tombol);
   color: var(--teks-sekunder);
   text-decoration: none;
   font-weight: 500;
+  transition: background var(--transisi), color var(--transisi);
+}
+.sidebar a:hover {
+  background: var(--warna-latar);
+  color: var(--teks-utama);
 }
 .sidebar a.aktif {
-  background: var(--bg-info);
+  background: var(--warna-primer-lembut);
   color: var(--warna-primer);
+  font-weight: 600;
 }
+/* Ikon menu: penanda posisi, bukan hiasan. Ukurannya ikut ukuran teks. */
+.sidebar a svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  opacity: 0.75;
+}
+.sidebar a.aktif svg {
+  opacity: 1;
+}
+.sidebar__pengguna {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--warna-garis);
+}
+
 .konten {
-  padding: var(--sp-5);
+  padding: var(--sp-5) var(--sp-6);
   max-width: var(--lebar-konten-maks);
   width: 100%;
+  /* Selalu ada ruang di bawah supaya tombol terakhir tidak menempel tepi */
+  padding-bottom: var(--sp-7);
+}
+
+/* Bar atas — hanya muncul di layar sempit */
+.topbar {
+  display: none;
+  align-items: center;
+  gap: var(--sp-3);
+  height: var(--tinggi-topbar);
+  padding: 0 var(--sp-3);
+  background: var(--warna-permukaan);
+  border-bottom: 1px solid var(--warna-garis);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.topbar__merek {
+  font-weight: 700;
+  color: var(--warna-primer);
+}
+.hamburger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tinggi-sentuh);
+  height: var(--tinggi-sentuh);
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--warna-garis);
+  border-radius: var(--radius-tombol);
+  color: var(--teks-utama);
+  cursor: pointer;
+}
+
+.tirai {
+  display: none;
+}
+
+/* Grid kartu statistik: 1 kolom di ponsel, mengisi sendiri di layar lebar */
+.statistik {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--sp-3);
+  margin: var(--sp-5) 0;
+}
+.statistik .kartu {
+  padding: var(--sp-4);
+}
+.statistik__angka {
+  font-family: var(--font-angka);
+  font-variant-numeric: tabular-nums;
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 700;
+  margin-bottom: var(--sp-2);
+}
+
+/* Daftar ringkas pasangan label/nilai — dipakai di kepala halaman detail */
+.ringkas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--sp-4) var(--sp-5);
+  margin: var(--sp-4) 0 var(--sp-5);
+}
+.ringkas__label {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--teks-redup);
+}
+.ringkas dd {
+  margin: 0;
+}
+.ringkas__nilai {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tab tahap pengajuan */
+.tab {
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  padding-bottom: var(--sp-3);
+  margin: var(--sp-5) 0;
+  border-bottom: 1px solid var(--warna-garis);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.tab a {
+  flex: none;
 }
 
 /*
- * AO bekerja di lapangan dengan layar ponsel (NFR-08). Di bawah 720px sidebar
- * dilipat menjadi bar atas, dan konten menjadi satu kolom tanpa scroll
- * horizontal.
+ * PONSEL DAN TABLET SEMPIT (NFR-08)
+ *
+ * AO mengisi survei sambil berdiri di lokasi usaha. Yang berubah di sini bukan
+ * sekadar ukuran: sidebar menjadi laci yang menutup dirinya, dan tabel berhenti
+ * menjadi tabel.
  */
 @media (max-width: 720px) {
+  /*
+   * minmax(0, 1fr), bukan 1fr. Ukuran minimum bawaan sebuah trek grid adalah
+   * lebar min-content isinya. Satu elemen yang tidak bisa menyusut — deretan
+   * badge ber-nowrap, misalnya — akan MELEBARKAN treknya melewati layar, dan
+   * seluruh halaman ikut bisa digeser ke samping. Dengan minimum 0, trek
+   * berhenti melar; elemen yang bermasalah menjadi terlihat saat diuji,
+   * bukan diam-diam menyeret seluruh tata letak.
+   */
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .topbar {
+    display: flex;
+  }
+
+  /*
+   * Sidebar menjadi laci yang meluncur dari kiri. Ia tetap ada di DOM (dan
+   * tetap terbaca pembaca layar saat terbuka), tetapi tidak lagi merebut ruang
+   * vertikal dari konten.
+   */
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 50;
+    width: min(80vw, 300px);
+    height: 100vh;
+    border-right: 1px solid var(--warna-garis);
+    box-shadow: var(--bayang-melayang);
+    transform: translateX(-100%);
+    transition: transform 180ms ease;
+  }
+  .sidebar[data-terbuka='true'] {
+    transform: translateX(0);
+  }
+  /* Target sentuh penuh untuk setiap menu */
+  .sidebar a {
+    min-height: var(--tinggi-sentuh);
+    font-size: 15px;
+  }
+
+  .tirai {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(22, 33, 30, 0.45);
+    border: none;
+  }
+
+  .konten {
+    padding: var(--sp-4) var(--sp-4) var(--sp-7);
+  }
+
+  h1 {
+    font-size: 20px;
+    line-height: 28px;
+  }
+
+  .tombol {
+    min-height: var(--tinggi-sentuh);
+  }
+
+  .statistik {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--sp-2);
+  }
+  .statistik__angka {
+    font-size: 24px;
+  }
+
+  /*
+   * TABEL MENJADI KARTU.
+   *
+   * Setiap <td> menampilkan judul kolomnya sendiri lewat atribut data-label,
+   * jadi tidak ada baris yang kehilangan konteks saat kolomnya ditumpuk. Ini
+   * mengganti scroll horizontal — pada tabel data, scroll ke samping membuat
+   * orang kehilangan baris yang sedang dibacanya, dan pada layar 360px kolom
+   * keenam praktis tidak pernah ditemukan.
+   *
+   * Tabel tanpa data-label tetap tampil sebagai tabel ber-scroll; kelas ini
+   * tidak memaksa apa pun pada tabel yang belum disiapkan.
+   */
+  /*
+   * Pembungkus hanya melepas bingkainya untuk tabel yang MEMANG berubah
+   * menjadi kartu. Tabel yang belum disiapkan (belum punya data-label) tetap
+   * membutuhkan kotak ber-scroll — kalau bingkainya dilepas juga, tabelnya
+   * meluber dan seluruh halaman ikut bisa digeser ke samping.
+   */
+  .tabel-bungkus:has(.tabel--kartu) {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    overflow-x: visible;
+  }
+  .tabel--kartu thead {
+    /* Disembunyikan secara visual; judulnya pindah ke data-label tiap sel */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .tabel--kartu,
+  .tabel--kartu tbody,
+  .tabel--kartu tr,
+  .tabel--kartu td {
+    display: block;
+    width: 100%;
+  }
+  .tabel--kartu tr {
+    background: var(--warna-permukaan);
+    border: 1px solid var(--warna-garis);
+    border-radius: var(--radius-kartu);
+    padding: var(--sp-2) var(--sp-3);
+    margin-bottom: var(--sp-3);
+  }
+  .tabel--kartu tbody tr:hover {
+    background: var(--warna-permukaan);
+  }
+  .tabel--kartu td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    padding: var(--sp-2) 0;
+    border-bottom: 1px solid var(--warna-garis);
+    text-align: right;
+  }
+  .tabel--kartu tr td:last-child {
+    border-bottom: none;
+  }
+  .tabel--kartu td::before {
+    content: attr(data-label);
+    flex: none;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--teks-sekunder);
+    text-align: left;
+  }
+  /*
+   * Nilai panjang harus boleh dipatah baris. Tanpa ini, satu badge status atau
+   * satu nomor referensi yang tidak punya titik patah akan mendorong lebar
+   * dokumen melebihi layar — dan begitu itu terjadi, SELURUH halaman bisa
+   * digeser ke samping, bukan hanya tabelnya.
+   */
+  .tabel--kartu td {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .tabel--kartu .badge {
+    white-space: normal;
+  }
+
+  /* Sel tanpa data-label (mis. kolom aksi) memakai lebar penuh */
+  .tabel--kartu td:not([data-label])::before {
+    content: none;
+  }
+  .tabel--kartu td:not([data-label]) {
+    justify-content: flex-end;
+  }
+}
+
+/*
+ * Sebagian pengguna mematikan animasi karena alasan medis (vestibular). Hormati
+ * pengaturannya: laci tetap berfungsi, hanya tidak meluncur.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Saat dicetak, navigasi tidak ada gunanya — sering dipakai untuk berkas kredit */
+@media print {
+  .sidebar,
+  .topbar,
+  .tirai,
+  .tab {
+    display: none !important;
+  }
   .layout {
     grid-template-columns: 1fr;
   }
-  .sidebar {
-    flex-direction: row;
-    overflow-x: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--warna-garis);
-  }
   .konten {
-    padding: var(--sp-4);
+    padding: 0;
+    max-width: none;
+  }
+  .kartu,
+  .tabel-bungkus {
+    border-color: #999;
   }
 }

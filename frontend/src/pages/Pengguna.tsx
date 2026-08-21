@@ -135,16 +135,15 @@ export function Pengguna() {
       <PanelGalat galat={galat} />
 
       <div
+        className={panelTambah ? 'dua-kolom' : 'dua-kolom dua-kolom--tunggal'}
         style={{
-          display: 'grid',
-          gridTemplateColumns: panelTambah ? 'minmax(0, 1fr) 360px' : '1fr',
+          '--kolom-samping': '360px',
           gap: 'var(--sp-5)',
           marginTop: 'var(--sp-5)',
-          alignItems: 'start',
-        }}
+        } as React.CSSProperties}
       >
-        <div className="kartu" style={{ padding: 0, overflowX: 'auto' }}>
-          <table className="tabel">
+        <div className="tabel-bungkus">
+          <table className="tabel tabel--kartu">
             <thead>
               <tr>
                 <th>Nama</th>
@@ -174,9 +173,9 @@ export function Pengguna() {
                 const diriSendiri = p.id === penggunaAktif?.id
                 return (
                   <tr key={p.id}>
-                    <td>{p.nama}</td>
-                    <td className="mono">{p.username}</td>
-                    <td>
+                    <td data-label="Nama">{p.nama}</td>
+                    <td data-label="Nama pengguna" className="mono">{p.username}</td>
+                    <td data-label="Peran">
                       {ubahPeranUntuk === p.id ? (
                         <select
                           aria-label={`Peran untuk ${p.nama}`}
@@ -200,13 +199,13 @@ export function Pengguna() {
                         </span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Status">
                       <span className={p.aktif ? 'badge badge--sukses' : 'badge'}>
                         {p.aktif ? 'Aktif' : 'Nonaktif'}
                       </span>
                     </td>
-                    <td>{tanggal(p.dibuatPada)}</td>
-                    <td>
+                    <td data-label="Dibuat">{tanggal(p.dibuatPada)}</td>
+                    <td data-label="Aksi">
                       <button
                         style={gaya.aksi}
                         onClick={() => setUbahPeranUntuk(ubahPeranUntuk === p.id ? null : p.id)}

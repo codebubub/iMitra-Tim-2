@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ambilDetailPengajuan } from '../api/pengajuan'
 import { rupiah } from '../api/client'
 import { BadgeStatus } from '../components/Badge'
+import { Memuat } from '../components/Memuat'
 import { useAuth, type Peran } from '../auth/AuthContext'
 
 /**
@@ -42,32 +43,6 @@ const TAB: Tab[] = [
   { ke: 'audit', label: 'Audit Trail' },
 ]
 
-const gaya = {
-  ringkas: {
-    display: 'flex',
-    flexWrap: 'wrap' as const,
-    gap: 'var(--sp-5)',
-    margin: 'var(--sp-4) 0',
-  },
-  item: { minWidth: 130 },
-  label: {
-    fontSize: 12,
-    letterSpacing: '0.04em',
-    textTransform: 'uppercase' as const,
-    color: 'var(--teks-redup)',
-  },
-  nilai: { fontWeight: 600, fontVariantNumeric: 'tabular-nums' as const },
-  tab: {
-    display: 'flex',
-    gap: 'var(--sp-2)',
-    flexWrap: 'wrap' as const,
-    borderBottom: '1px solid var(--warna-garis)',
-    paddingBottom: 'var(--sp-2)',
-    margin: 'var(--sp-5) 0',
-  },
-  ditolak: { textDecoration: 'line-through', color: 'var(--teks-redup)' },
-} satisfies Record<string, React.CSSProperties>
-
 export function DetailPengajuan() {
   const { id } = useParams<{ id: string }>()
   const pengajuanId = id ?? ''
@@ -79,63 +54,74 @@ export function DetailPengajuan() {
     enabled: !!pengajuanId,
   })
 
-  if (isLoading) return <p className="redup">Memuat pengajuan...</p>
-  if (error || !data) return <p className="redup">Pengajuan tidak ditemukan.</p>
+  if (isLoading) return <Memuat baris={4} />
+  if (error || !data) {
+    return (
+      <div className="panel-galat">
+        <span>
+          Pengajuan tidak ditemukan, atau Anda tidak berhak membukanya. Kembali ke Dashboard
+          dan pilih dari daftar.
+        </span>
+      </div>
+    )
+  }
 
   const tabTampil = TAB.filter((t) => !t.peran || (pengguna && t.peran.includes(pengguna.peran)))
   const anggotaAktif = data.anggota.filter((a) => a.statusAnggota === 'AKTIF')
+  const adaDitolak = data.anggota.some((a) => a.statusAnggota === 'DITOLAK')
 
   return (
     <>
-      <h1 className="mono">{data.nomorReferensi}</h1>
-
-      <div style={{ marginTop: 'var(--sp-2)' }}>
+      <div className="aksi" style={{ gap: 'var(--sp-3)' }}>
+        <h1 className="mono" style={{ fontSize: 22 }}>
+          {data.nomorReferensi}
+        </h1>
         <BadgeStatus status={data.status} />
       </div>
 
-      <div style={gaya.ringkas}>
-        <div style={gaya.item}>
-          <div style={gaya.label}>Jenis nasabah</div>
-          <div style={gaya.nilai}>
+      <dl className="ringkas">
+        <div>
+          <dt className="ringkas__label">Jenis nasabah</dt>
+          <dd className="ringkas__nilai">
             {data.jenisNasabah === 'KELOMPOK'
-              ? `Kelompok · ${anggotaAktif.length} anggota aktif`
+              ? `Kelompok - ${anggotaAktif.length} anggota aktif`
               : 'Perorangan'}
-          </div>
+          </dd>
         </div>
-        <div style={gaya.item}>
-          <div style={gaya.label}>Akad</div>
-          <div style={gaya.nilai}>{data.akad}</div>
+        <div>
+          <dt className="ringkas__label">Akad</dt>
+          <dd className="ringkas__nilai">{data.akad}</dd>
         </div>
-        <div style={gaya.item}>
-          <div style={gaya.label}>Total plafon</div>
-          <div style={gaya.nilai}>{rupiah(data.totalPlafon)}</div>
+        <div>
+          <dt className="ringkas__label">Total plafon</dt>
+          <dd className="ringkas__nilai">{rupiah(data.totalPlafon)}</dd>
         </div>
-        <div style={gaya.item}>
-          <div style={gaya.label}>Tenor</div>
-          <div style={gaya.nilai}>{data.tenorBulan} bulan</div>
+        <div>
+          <dt className="ringkas__label">Tenor</dt>
+          <dd className="ringkas__nilai">{data.tenorBulan} bulan</dd>
         </div>
-        <div style={gaya.item}>
-          <div style={gaya.label}>Jalur approval</div>
-          <div style={gaya.nilai}>
-            {data.urutanApproval.join(' → ')}{' '}
+        <div>
+          <dt className="ringkas__label">Jalur approval</dt>
+          <dd className="ringkas__nilai">
+            {data.urutanApproval.join(' - ')}{' '}
             <span className="redup" style={{ fontWeight: 400 }}>
               ({data.jumlahLevel} level)
             </span>
-          </div>
+          </dd>
         </div>
-        <div style={gaya.item}>
-          <div style={gaya.label}>Dibuat oleh</div>
-          <div style={gaya.nilai}>{data.dibuatOleh.nama}</div>
+        <div>
+          <dt className="ringkas__label">Dibuat oleh</dt>
+          <dd className="ringkas__nilai">{data.dibuatOleh.nama}</dd>
         </div>
-      </div>
+      </dl>
 
-      <nav style={gaya.tab} aria-label="Tahap pengajuan">
+      <nav className="tab" aria-label="Tahap pengajuan">
         {tabTampil.map((t) => (
           <NavLink
             key={t.ke}
             to={`/pengajuan/${pengajuanId}/${t.ke}`}
             className={({ isActive }) =>
-              isActive ? 'tombol' : 'tombol tombol--sekunder'
+              isActive ? 'tombol tombol--kecil' : 'tombol tombol--sekunder tombol--kecil'
             }
           >
             {t.label}
@@ -143,11 +129,12 @@ export function DetailPengajuan() {
         ))}
       </nav>
 
-      <h2>
+      <h2 style={{ marginBottom: 'var(--sp-3)' }}>
         {data.jenisNasabah === 'KELOMPOK' ? `Anggota kelompok (${data.anggota.length})` : 'Nasabah'}
       </h2>
-      <div className="kartu" style={{ padding: 0, marginTop: 'var(--sp-3)', overflowX: 'auto' }}>
-        <table className="tabel">
+
+      <div className="tabel-bungkus">
+        <table className="tabel tabel--kartu">
           <thead>
             <tr>
               <th>#</th>
@@ -162,14 +149,18 @@ export function DetailPengajuan() {
             {data.anggota.map((a) => {
               const ditolak = a.statusAnggota === 'DITOLAK'
               return (
-                <tr key={a.id} style={ditolak ? gaya.ditolak : undefined}>
-                  <td>{a.urutan}</td>
-                  <td>{a.nama}</td>
+                <tr key={a.id} data-ditolak={ditolak}>
+                  <td data-label="Urutan">{a.urutan}</td>
+                  <td data-label="Nama">{a.nama}</td>
                   {/* NIK selalu tersamar (BR-11). Server yang menyamarkannya. */}
-                  <td className="mono">{a.nikTersamar}</td>
-                  <td>{a.jenisUsaha}</td>
-                  <td className="angka">{rupiah(a.plafonDiajukan)}</td>
-                  <td>
+                  <td data-label="NIK" className="mono">
+                    {a.nikTersamar}
+                  </td>
+                  <td data-label="Jenis usaha">{a.jenisUsaha}</td>
+                  <td data-label="Plafon" className="angka">
+                    {rupiah(a.plafonDiajukan)}
+                  </td>
+                  <td data-label="Status">
                     <span className={ditolak ? 'badge badge--bahaya' : 'badge badge--sukses'}>
                       {ditolak ? 'Ditolak' : 'Aktif'}
                     </span>
@@ -181,7 +172,7 @@ export function DetailPengajuan() {
         </table>
       </div>
 
-      {data.anggota.some((a) => a.statusAnggota === 'DITOLAK') && (
+      {adaDitolak && (
         <p className="redup" style={{ marginTop: 'var(--sp-3)', fontSize: 13 }}>
           Plafon anggota yang ditolak tidak lagi dihitung. Total plafon dan jalur approval di
           atas sudah menyesuaikan.

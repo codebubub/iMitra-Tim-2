@@ -118,8 +118,8 @@ export function AuditTrail() {
             {data.length} catatan, urut waktu.
           </p>
 
-          <div className="kartu" style={{ padding: 0, marginTop: 'var(--sp-3)', overflowX: 'auto' }}>
-            <table className="tabel">
+          <div className="tabel-bungkus" style={{ marginTop: 'var(--sp-3)' }}>
+            <table className="tabel tabel--kartu">
               <thead>
                 <tr>
                   <th>Waktu</th>
@@ -131,16 +131,16 @@ export function AuditTrail() {
               <tbody>
                 {data.map((b) => (
                   <tr key={b.id}>
-                    <td style={gaya.waktu}>{waktuPanjang(b.waktu)}</td>
-                    <td>
+                    <td data-label="Waktu" style={gaya.waktu}>{waktuPanjang(b.waktu)}</td>
+                    <td data-label="Aktor">
                       <div style={{ fontWeight: 600 }}>{b.aktor}</div>
                       <span className="badge">{b.aktorPeran}</span>
                     </td>
-                    <td>
+                    <td data-label="Aksi">
                       <div>{LABEL_AKSI[b.aksi] ?? b.aksi}</div>
                       <Metadata isi={b.metadata} />
                     </td>
-                    <td>
+                    <td data-label="Perubahan status">
                       {b.statusSesudah ? (
                         <>
                           {b.statusSebelum ? (

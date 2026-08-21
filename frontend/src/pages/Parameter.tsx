@@ -150,9 +150,9 @@ export function Parameter() {
       )}
 
       {skoring.data && (
-        <div className="kartu" style={{ padding: 0, marginTop: 'var(--sp-3)' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="tabel">
+        <div className="tabel-bungkus" style={{ marginTop: 'var(--sp-3)' }}>
+          <div className="tabel-bungkus">
+            <table className="tabel tabel--kartu">
               <thead>
                 <tr>
                   <th>Komponen</th>
@@ -166,8 +166,8 @@ export function Parameter() {
                     Number(ubahan[kode].replace(',', '.')) !== bobot[kode]
                   return (
                     <tr key={kode}>
-                      <td>{LABEL_KOMPONEN[kode as KodeKomponen] ?? kode}</td>
-                      <td className="angka">
+                      <td data-label="Komponen">{LABEL_KOMPONEN[kode as KodeKomponen] ?? kode}</td>
+                      <td data-label="Bobot" className="angka">
                         <input
                           aria-label={`Bobot ${LABEL_KOMPONEN[kode as KodeKomponen] ?? kode}`}
                           inputMode="decimal"
@@ -186,8 +186,8 @@ export function Parameter() {
                   )
                 })}
                 <tr style={{ fontWeight: 700, borderTop: '2px solid var(--warna-garis)' }}>
-                  <td>Total bobot</td>
-                  <td className="angka">{totalBobot.toLocaleString('id-ID')}</td>
+                  <td data-label="Komponen">Total bobot</td>
+                  <td data-label="Bobot" className="angka">{totalBobot.toLocaleString('id-ID')}</td>
                 </tr>
               </tbody>
             </table>
@@ -202,7 +202,7 @@ export function Parameter() {
       {skoring.data && (
         <div className="kartu" style={{ padding: 'var(--sp-4)', marginTop: 'var(--sp-4)' }}>
           <h2 style={{ fontSize: 15 }}>Parameter perhitungan</h2>
-          <div style={{ overflowX: 'auto', marginTop: 'var(--sp-2)' }}>
+          <div className="tabel-bungkus" style={{ marginTop: 'var(--sp-2)' }}>
             <table className="tabel">
               <tbody>
                 {Object.entries(skoring.data.skalar).map(([kode, nilai]) => (
@@ -222,8 +222,8 @@ export function Parameter() {
       {ambang.isLoading && <p className="redup">Memuat ambang approval...</p>}
       {ambang.error && <p className="redup">Gagal memuat ambang approval.</p>}
       {ambang.data && (
-        <div className="kartu" style={{ padding: 0, marginTop: 'var(--sp-3)', overflowX: 'auto' }}>
-          <table className="tabel">
+        <div className="tabel-bungkus" style={{ marginTop: 'var(--sp-3)' }}>
+          <table className="tabel tabel--kartu">
             <thead>
               <tr>
                 <th className="angka">Plafon minimum</th>
@@ -234,9 +234,9 @@ export function Parameter() {
             <tbody>
               {ambang.data.map((b) => (
                 <tr key={`${b.plafonMin}-${b.plafonMaks}`}>
-                  <td className="angka">{rupiah(b.plafonMin)}</td>
-                  <td className="angka">{rupiah(b.plafonMaks)}</td>
-                  <td>
+                  <td data-label="Plafon minimum" className="angka">{rupiah(b.plafonMin)}</td>
+                  <td data-label="Plafon maksimum" className="angka">{rupiah(b.plafonMaks)}</td>
+                  <td data-label="Level yang diperlukan">
                     {b.urutanPeran.map((p) => (
                       <span key={p} style={gaya.chip}>
                         {p}
@@ -262,8 +262,8 @@ export function Parameter() {
       {rentang.isLoading && <p className="redup">Memuat rentang margin...</p>}
       {rentang.error && <p className="redup">Gagal memuat rentang margin.</p>}
       {rentang.data && (
-        <div className="kartu" style={{ padding: 0, marginTop: 'var(--sp-3)', overflowX: 'auto' }}>
-          <table className="tabel">
+        <div className="tabel-bungkus" style={{ marginTop: 'var(--sp-3)' }}>
+          <table className="tabel tabel--kartu">
             <thead>
               <tr>
                 <th className="angka">Grade</th>
@@ -276,22 +276,22 @@ export function Parameter() {
             <tbody>
               {rentang.data.map((r) => (
                 <tr key={r.grade}>
-                  <td className="angka">{r.grade}</td>
-                  <td className="angka">
+                  <td data-label="Grade" className="angka">{r.grade}</td>
+                  <td data-label="Rentang skor" className="angka">
                     {r.skorMin}–{r.skorMaks}
                   </td>
                   {/* Grade yang tidak dibiayai: rentangnya null di database. */}
-                  <td className="angka">
+                  <td data-label="Margin murabahah" className="angka">
                     {r.marginMin === null || r.marginMaks === null
                       ? 'Tidak dibiayai'
                       : `${duaDesimal(r.marginMin)}% – ${duaDesimal(r.marginMaks)}%`}
                   </td>
-                  <td className="angka">
+                  <td data-label="Nisbah musyarakah" className="angka">
                     {r.nisbahMin === null || r.nisbahMaks === null
                       ? 'Tidak dibiayai'
                       : `${duaDesimal(r.nisbahMin)}% – ${duaDesimal(r.nisbahMaks)}%`}
                   </td>
-                  <td>
+                  <td data-label="Dibiayai">
                     <span className={r.dibiayai ? 'badge badge--sukses' : 'badge badge--bahaya'}>
                       {r.dibiayai ? 'Ya' : 'Tidak'}
                     </span>
