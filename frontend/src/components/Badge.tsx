@@ -56,6 +56,26 @@ const LABEL: Record<string, string> = {
   DIKEMBALIKAN: 'Dikembalikan',
 }
 
+/**
+ * Nada warna semantik sebuah status, tanpa membawa kelas badge-nya.
+ *
+ * Dipakai bar komposisi di dashboard, yang perlu warnanya tetapi bukan
+ * bentuk badge-nya. Diturunkan dari WARNA di atas — BUKAN peta kedua — supaya
+ * dashboard tidak bisa memberi warna berbeda dari badge untuk status yang sama.
+ */
+export type NadaStatus = 'sukses' | 'bahaya' | 'peringatan' | 'info' | 'netral'
+
+export function nadaStatus(status: string): NadaStatus {
+  const kelas = WARNA[status]
+  if (!kelas) return 'netral'
+  const cocok = kelas.match(/badge--(\w+)/)
+  return (cocok?.[1] as NadaStatus) ?? 'netral'
+}
+
+export function labelStatus(status: string): string {
+  return LABEL[status] ?? status
+}
+
 export function BadgeStatus({ status }: { status: string }) {
   // Status yang tidak dikenal ditampilkan apa adanya, BUKAN disembunyikan atau
   // diganti "-". Kalau backend menambah enum baru, ia harus terlihat di layar

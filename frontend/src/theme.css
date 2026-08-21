@@ -238,32 +238,6 @@ a:focus-visible,
   border: 0;
 }
 
-/*
- * Kartu yang bisa diketuk. Kartu statistik di dashboard berfungsi sebagai
- * filter status (FR-12), dan ditulis sebagai <button> — bukan <div onClick> —
- * supaya bisa dicapai Tab dan ditekan Enter/Spasi tanpa handler tambahan.
- */
-.kartu--klik {
-  display: block;
-  width: 100%;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  transition: border-color var(--transisi), background var(--transisi),
-    box-shadow var(--transisi);
-}
-.kartu--klik:hover {
-  border-color: var(--warna-garis-kuat);
-  background: var(--warna-permukaan-alt);
-}
-.kartu--klik[data-dipilih='true'] {
-  border-color: var(--warna-primer);
-  background: var(--warna-primer-lembut);
-  /* Garis kedua di dalam supaya "terpilih" tidak disampaikan lewat warna saja */
-  box-shadow: inset 0 0 0 1px var(--warna-primer);
-}
-
 /* Komponen dasar ------------------------------------------------------- */
 
 .kartu {
@@ -685,23 +659,183 @@ a:focus-visible,
   display: none;
 }
 
-/* Grid kartu statistik: 1 kolom di ponsel, mengisi sendiri di layar lebar */
-.statistik {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+/*
+ * Kepala halaman: judul di kiri, satu aksi di kanan. Membungkus di layar sempit
+ * supaya tombolnya turun ke bawah judul, bukan menghimpitnya sampai terpotong.
+ */
+.kepala-halaman {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: var(--sp-3);
-  margin: var(--sp-5) 0;
 }
-.statistik .kartu {
+
+/* Ringkasan angka di kepala dashboard */
+.kpi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+.kpi .kartu {
   padding: var(--sp-4);
 }
-.statistik__angka {
+.kpi__label {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--teks-redup);
+}
+.kpi__nilai {
+  margin-top: var(--sp-2);
   font-family: var(--font-angka);
   font-variant-numeric: tabular-nums;
-  font-size: 28px;
-  line-height: 34px;
+  font-size: 24px;
+  line-height: 30px;
   font-weight: 700;
-  margin-bottom: var(--sp-2);
+  letter-spacing: -0.01em;
+  /* Rupiah panjang harus boleh turun baris, bukan melebarkan kartunya */
+  overflow-wrap: anywhere;
+}
+.kpi__catatan {
+  margin-top: var(--sp-1);
+  font-size: 12px;
+}
+
+/*
+ * Bar komposisi pipeline.
+ *
+ * Lebar tiap segmen memakai flex-grow, bukan persen yang dihitung sendiri:
+ * pembagian sisa ruang diserahkan ke browser, jadi jumlahnya selalu tepat 100%
+ * tanpa galat pembulatan yang menyisakan celah putih di ujung kanan.
+ */
+.komposisi {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  margin-bottom: var(--sp-3);
+  border-radius: var(--radius-badge);
+  overflow: hidden;
+  background: var(--bg-netral);
+}
+.komposisi__seg {
+  flex-basis: 0;
+  min-width: 3px;
+  transition: opacity var(--transisi);
+}
+/* Segmen yang tidak sedang disaring diredupkan, tidak disembunyikan — yang
+   hilang membuat proporsinya berubah dan pembacaannya jadi salah. */
+.komposisi__seg[data-redup='true'] {
+  opacity: 0.22;
+}
+/*
+ * Kelas nada hanya MENETAPKAN --nada; warnanya dipakai aturan di atas. Dengan
+ * begitu segmen bar dan titik pada chip mustahil berbeda warna untuk status
+ * yang sama.
+ */
+.komposisi__seg--info,
+.cip--info {
+  --nada: var(--warna-info);
+}
+.komposisi__seg--sukses,
+.cip--sukses {
+  --nada: var(--warna-sukses);
+}
+.komposisi__seg--peringatan,
+.cip--peringatan {
+  --nada: var(--warna-peringatan);
+}
+.komposisi__seg--bahaya,
+.cip--bahaya {
+  --nada: var(--warna-bahaya);
+}
+.komposisi__seg--netral,
+.cip--netral {
+  --nada: var(--teks-redup);
+}
+
+/*
+ * GRADASI DALAM SATU KELUARGA WARNA.
+ *
+ * Lima belas status hanya punya lima nada semantik, jadi beberapa status
+ * berbagi warna yang sama persis. "Sudah diskor" dan "Menunggu approval L1"
+ * keduanya biru; berdampingan di bar, keduanya terbaca sebagai SATU segmen
+ * dengan garis putih tipis di tengahnya — dan proporsinya salah dibaca.
+ *
+ * --kadar (diisi per segmen dari JS) mencampur nada dengan putih, sehingga
+ * status kedua dalam satu keluarga tampil lebih muda. Semantiknya tetap:
+ * biru tetap "sedang berjalan", merah tetap "ditolak".
+ *
+ * Baris pertama adalah cadangan untuk browser tanpa color-mix — ia mendapat
+ * warna penuh, yang kurang enak dibaca tetapi tidak pernah kosong.
+ */
+.komposisi__seg,
+.cip::before {
+  background: var(--nada, var(--teks-redup));
+}
+@supports (background: color-mix(in srgb, red 50%, white)) {
+  .komposisi__seg,
+  .cip::before {
+    background: color-mix(in srgb, var(--nada, var(--teks-redup)) var(--kadar, 100%), white);
+  }
+}
+
+/*
+ * Chip filter. Ia memegang seluruh interaksi penyaringan, karena segmen bar di
+ * atasnya bisa selebar belasan piksel — mustahil dikenai jari.
+ *
+ * Titik warna di kiri menghubungkan chip ke segmen bar-nya. Warna BUKAN
+ * satu-satunya penanda: labelnya selalu ada, dan status terpilih ditandai
+ * bingkai serta aria-pressed.
+ */
+.cip-baris {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.cip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px var(--sp-3);
+  min-height: 34px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--teks-sekunder);
+  background: var(--warna-permukaan);
+  border: 1px solid var(--warna-garis);
+  border-radius: var(--radius-badge);
+  cursor: pointer;
+  transition: border-color var(--transisi), background var(--transisi),
+    color var(--transisi);
+}
+.cip::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+/* Chip "Semua" tidak mewakili satu warna, jadi ia tidak memakai titik */
+.cip:not([class*='cip--'])::before {
+  display: none;
+}
+.cip:hover {
+  border-color: var(--warna-garis-kuat);
+  background: var(--warna-permukaan-alt);
+  color: var(--teks-utama);
+}
+.cip[data-dipilih='true'] {
+  border-color: var(--warna-primer);
+  background: var(--warna-primer-lembut);
+  color: var(--warna-primer);
+  font-weight: 600;
+}
+.cip__jumlah {
+  font-family: var(--font-angka);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
 }
 
 /* Daftar ringkas pasangan label/nilai — dipakai di kepala halaman detail */
@@ -811,13 +945,11 @@ a:focus-visible,
     min-height: var(--tinggi-sentuh);
   }
 
-  .statistik {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: var(--sp-2);
+  .cip {
+    min-height: var(--tinggi-sentuh);
+    font-size: 14px;
   }
-  .statistik__angka {
-    font-size: 24px;
-  }
+
 
   /*
    * TABEL MENJADI KARTU.
