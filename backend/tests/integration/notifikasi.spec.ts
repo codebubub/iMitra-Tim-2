@@ -67,8 +67,6 @@ describe('FR-11 — notifikasi milik pengguna sendiri', () => {
   })
 
   it('TIDAK memberi tahu aktor atas perubahan status yang ia lakukan sendiri', async () => {
-    const sebelum = await prisma.notifikasi.count({ where: { penggunaId: id.ao } })
-
     const dibuat = await app.inject({
       method: 'POST',
       url: '/api/pengajuan',
@@ -98,8 +96,19 @@ describe('FR-11 — notifikasi milik pengguna sendiri', () => {
     })
     expect(submit.statusCode, submit.body).toBe(200)
 
-    const sesudah = await prisma.notifikasi.count({ where: { penggunaId: id.ao } })
-    expect(sesudah, 'aktor diberi tahu atas aksinya sendiri').toBe(sebelum)
+    /**
+     * Dihitung untuk PENGAJUAN INI saja, bukan untuk seluruh notifikasi milik AO.
+     *
+     * Versi sebelumnya membandingkan jumlah total sebelum dan sesudah. Angka itu
+     * ikut bergerak setiap kali ada perubahan status pengajuan AO yang dilakukan
+     * peran lain — termasuk oleh berkas test lain di run yang sama, atau oleh
+     * orang lain yang kebetulan memakai schema yang sama. Kegagalannya lalu
+     * muncul acak dan menunjuk ke aturan yang sebenarnya tidak dilanggar.
+     */
+    const sesudah = await prisma.notifikasi.count({
+      where: { penggunaId: id.ao, pengajuanId: dibuat.json().id },
+    })
+    expect(sesudah, 'aktor diberi tahu atas aksinya sendiri').toBe(0)
   })
 
   it('menandai notifikasi sendiri sebagai dibaca', async () => {

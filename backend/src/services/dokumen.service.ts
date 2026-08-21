@@ -13,6 +13,7 @@ import {
 } from '../domain/dokumen.js'
 import * as repo from '../repositories/pengajuan.repo.js'
 import { tulisAudit, AKSI } from './audit.service.js'
+import { ubahStatus } from './status.service.js'
 import type { PenggunaToken } from '../middleware/rbac.js'
 
 /**
@@ -85,6 +86,20 @@ export async function unggahDokumen(
       tx,
     )
 
+    // AC-03 — unggah ulang dokumen yang ditolak mengembalikan pengajuan ke meja
+    // verifikasi. Hanya dokumen jenis itu yang berubah; data pengajuan lain
+    // tidak tersentuh, dan versi lama tetap tersimpan.
+    if (pengajuan.status === 'DOKUMEN_DITOLAK') {
+      await ubahStatus(tx, {
+        pengajuanId,
+        dari: 'DOKUMEN_DITOLAK',
+        ke: 'VERIFIKASI_DOKUMEN',
+        aktor,
+        sebab: `Dokumen ${masukan.jenis} diunggah ulang (versi ${versi})`,
+        metadata: { jenis: masukan.jenis, versi },
+      })
+    }
+
     await tulisAudit(tx, {
       pengajuanId,
       aktorId: aktor.id,
@@ -115,8 +130,33 @@ export async function verifikasiDokumen(
   validasiKeputusanVerifikasi(keputusan, kodeAlasan)
 
   const pengajuanId = dokumen.anggota.pengajuan.id
+  const statusAwal = dokumen.anggota.pengajuan.status
 
   await prisma.$transaction(async (tx) => {
+    /**
+     * TAHAP DOKUMEN MENGGERAKKAN STATUS PENGAJUAN (SRS 3.2).
+     *
+     * Sebelumnya verifikasi dokumen hanya menyentuh baris `dokumen`, sehingga
+     * pengajuan berhenti selamanya di `SUBMITTED`: SLIK check menolak karena
+     * status belum `VERIFIKASI_DOKUMEN`, dan seluruh rantai sesudahnya tidak
+     * pernah terjangkau dari aplikasi. Yang membuat ini sulit terlihat adalah
+     * data seed — ia menulis status akhir secara langsung, jadi layar tampak
+     * berjalan padahal alurnya putus.
+     *
+     * `SUBMITTED → VERIFIKASI_DOKUMEN` = "mulai verifikasi (ANL)" pada diagram.
+     */
+    let status: string = statusAwal
+    if (status === 'SUBMITTED') {
+      await ubahStatus(tx, {
+        pengajuanId,
+        dari: 'SUBMITTED',
+        ke: 'VERIFIKASI_DOKUMEN',
+        aktor,
+        sebab: 'ANL mulai memverifikasi dokumen',
+      })
+      status = 'VERIFIKASI_DOKUMEN'
+    }
+
     await tx.dokumen.update({
       where: { id: dokumenId },
       data: {
@@ -141,6 +181,20 @@ export async function verifikasiDokumen(
         ...(keputusan === 'REJECTED' ? { kodeAlasan } : {}),
       },
     })
+
+    // "minimal 1 dokumen REJECTED + kode alasan (ANL)" pada SRS 3.2. AO
+    // memperbaikinya dengan mengunggah ulang dokumen itu saja (AC-03), dan
+    // unggahan itulah yang mengembalikan status ke VERIFIKASI_DOKUMEN.
+    if (keputusan === 'REJECTED' && status === 'VERIFIKASI_DOKUMEN') {
+      await ubahStatus(tx, {
+        pengajuanId,
+        dari: 'VERIFIKASI_DOKUMEN',
+        ke: 'DOKUMEN_DITOLAK',
+        aktor,
+        sebab: `Dokumen ${dokumen.jenis} ditolak dengan alasan ${kodeAlasan}`,
+        metadata: { dokumenId, jenis: dokumen.jenis, kodeAlasan },
+      })
+    }
   })
 
   return { id: dokumenId, status: keputusan, kodeAlasan: keputusan === 'REJECTED' ? kodeAlasan : null }

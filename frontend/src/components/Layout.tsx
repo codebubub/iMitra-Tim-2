@@ -6,12 +6,8 @@ import { Ikon, type NamaIkon } from './Ikon'
 import { ambilNotifikasi } from '../api/notifikasi'
 
 /**
- * Kerangka aplikasi: topnav + sidebar + area konten.
- *
- * KENAPA KOMPONEN, BUKAN DITULIS DI TIAP HALAMAN. Sebelumnya sidebar tertanam
- * di dalam `Dashboard.tsx`, sehingga empat belas layar lain merender konten
- * telanjang tanpa navigasi apa pun. Layarnya berfungsi penuh — tetapi satu-
- * satunya cara mencapainya adalah mengetik URL berisi UUID.
+ * Kerangka aplikasi: sidebar (kolom kiri penuh) + kolom utama berisi topbar dan
+ * konten.
  *
  * MENU MENYESUAIKAN PERAN, dan itu KENYAMANAN — BUKAN OTORISASI. Server yang
  * memutuskan siapa boleh apa (AC-02 mengujinya lewat panggilan API langsung).
@@ -23,23 +19,19 @@ import { ambilNotifikasi } from '../api/notifikasi'
  * melihat menu yang mengantarnya ke halaman yang langsung memantulkannya.
  *
  * ------------------------------------------------------------------------
- * KENAPA ADA TOPNAV, PADAHAL SIDEBAR SUDAH MEMUAT SEMUA MENU
+ * SUSUNAN INI MENGIKUTI theme.css YANG BARU (Stitch S-02).
  *
- * Keduanya membawa hal yang berbeda. Sidebar menjawab "saya bisa ke mana";
- * topnav menjawab "saya sedang di mana, dan apa yang menunggu saya".
+ * Versi sebelumnya menumpuk topbar di atas baris [sidebar | konten]. Susunan
+ * Stitch membalik urutannya: sidebar adalah kolom penuh dari atas ke bawah, dan
+ * topbar hidup DI DALAM kolom kanan. Perbedaannya bukan selera — sidebar yang
+ * membentang penuh itulah yang menjadi jangkar visual halaman, sehingga topbar
+ * tidak perlu lagi menggelapkan dirinya sendiri.
  *
- * Tiga hal yang tidak punya tempat wajar di sidebar dan sebelumnya tidak ada
- * di mana pun:
- *   1. LOKASI — remah roti. Di layar tahap (skoring, SLIK, margin) tidak ada
- *      satu pun petunjuk pengajuan mana yang sedang dibuka selain URL.
- *   2. NOTIFIKASI BELUM DIBACA — angkanya hanya terlihat kalau pengguna
- *      membuka halaman notifikasi, yaitu justru ketika ia sudah tahu.
- *   3. IDENTITAS DAN KELUAR — dulu di dasar sidebar, terdorong ke bawah lipatan
- *      pada layar pendek.
- *
- * Topnav juga yang memberi halaman ini bidang berwarna. Sebelumnya seluruh
- * layar putih di atas abu-abu sangat muda, dan tanpa satu bidang gelap pun,
- * mata tidak punya jangkar — semuanya terbaca sebagai satu lapis datar.
+ * Nama kelas di sini (`cangkang`, `kolom-utama`, `sidebar__merek-nama`,
+ * `sidebar__menu`, `topnav__keluar`) harus sama persis dengan theme.css. Ketika
+ * keduanya sempat tidak cocok, sidebar merender sebagai blok biasa dan MENUTUPI
+ * seluruh area konten — halaman terlihat utuh, tetapi tidak satu pun tombol di
+ * dalamnya bisa ditekan.
  * ------------------------------------------------------------------------
  */
 
@@ -65,7 +57,7 @@ const MENU: Menu[] = [
  *
  * Dipetakan dari segmen, BUKAN dari daftar route: sebagian layar tahap tidak
  * punya entri menu, dan yang punya pun labelnya berbeda ("Pengajuan" di menu,
- * "Detail Pengajuan" di remah roti).
+ * "Detail" di remah roti).
  */
 const JUDUL_SEGMEN: Record<string, string> = {
   dashboard: 'Dashboard',
@@ -119,19 +111,16 @@ export function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const lokasi = useLocation()
   const [laciTerbuka, setLaciTerbuka] = useState(false)
-  const [menuAkun, setMenuAkun] = useState(false)
   const tombolLaci = useRef<HTMLButtonElement>(null)
-  const tombolAkun = useRef<HTMLButtonElement>(null)
-  const bungkusAkun = useRef<HTMLDivElement>(null)
 
   const menuTampil = MENU.filter((m) => !m.peran || (pengguna && m.peran.includes(pengguna.peran)))
   const remah = remahDariPath(lokasi.pathname)
 
   /**
-   * Jumlah notifikasi belum dibaca untuk lencana di topnav.
+   * Jumlah notifikasi belum dibaca untuk lencana di topbar.
    *
    * `belumDibaca` datang dari COUNT di server, bukan dari panjang array — kalau
-   * diturunkan dari `baris.length`, angkanya akan salah begitu daftar dibatasi.
+   * diturunkan dari `baris.length`, angkanya salah begitu daftar dibatasi.
    *
    * Kegagalan query ini sengaja TIDAK ditampilkan sebagai galat: lencana adalah
    * informasi tambahan, dan panel merah di setiap halaman hanya karena
@@ -140,49 +129,32 @@ export function Layout({ children }: { children: ReactNode }) {
   const { data: notif } = useQuery({
     queryKey: ['notifikasi'],
     queryFn: () => ambilNotifikasi(),
-    // Antrian approval bergerak saat orang lain bekerja, jadi angkanya basi
-    // kalau hanya diambil sekali. Satu menit cukup dekat tanpa membanjiri server.
+    // Antrian bergerak saat orang lain bekerja, jadi angkanya basi kalau hanya
+    // diambil sekali. Satu menit cukup dekat tanpa membanjiri server.
     refetchInterval: 60_000,
     retry: false,
   })
   const belumDibaca = notif?.belumDibaca ?? 0
 
-  // Pindah halaman menutup laci dan menu akun. Tanpa ini, menu menutupi halaman
-  // yang baru saja dibuka pengguna.
+  // Pindah halaman menutup laci. Tanpa ini, menu menutupi halaman yang baru saja
+  // dibuka pengguna, dan ia harus menutupnya sendiri untuk melihat hasilnya.
   useEffect(() => {
     setLaciTerbuka(false)
-    setMenuAkun(false)
   }, [lokasi.pathname])
 
-  // Escape menutup lapisan yang sedang terbuka, dan fokus kembali ke tombol
-  // pembukanya. Tanpa yang terakhir, pengguna keyboard terlempar ke awal
-  // halaman setiap kali menutup.
+  // Escape menutup laci, dan fokus kembali ke tombol pembukanya. Tanpa yang
+  // terakhir, pengguna keyboard terlempar ke awal halaman setiap kali menutup.
   useEffect(() => {
-    if (!laciTerbuka && !menuAkun) return
+    if (!laciTerbuka) return
     const saatTombol = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      if (menuAkun) {
-        setMenuAkun(false)
-        tombolAkun.current?.focus()
-      } else {
+      if (e.key === 'Escape') {
         setLaciTerbuka(false)
         tombolLaci.current?.focus()
       }
     }
     document.addEventListener('keydown', saatTombol)
     return () => document.removeEventListener('keydown', saatTombol)
-  }, [laciTerbuka, menuAkun])
-
-  // Klik di luar menu akun menutupnya. Dipasang hanya saat menu terbuka supaya
-  // tidak ada listener global yang menyala sepanjang sesi.
-  useEffect(() => {
-    if (!menuAkun) return
-    const saatKlik = (e: MouseEvent) => {
-      if (!bungkusAkun.current?.contains(e.target as Node)) setMenuAkun(false)
-    }
-    document.addEventListener('mousedown', saatKlik)
-    return () => document.removeEventListener('mousedown', saatKlik)
-  }, [menuAkun])
+  }, [laciTerbuka])
 
   function keluarSekarang() {
     keluar()
@@ -200,117 +172,36 @@ export function Layout({ children }: { children: ReactNode }) {
         Lompat ke konten
       </a>
 
-      <header className="topnav">
+      {/*
+       * Tirai gelap di belakang laci. Sebagai <button> supaya bisa ditutup
+       * dengan ketukan DAN dengan keyboard; sebuah <div> ber-onClick hanya
+       * melayani yang pertama.
+       */}
+      {laciTerbuka && (
         <button
-          ref={tombolLaci}
           type="button"
-          className="topnav__hamburger"
-          aria-label={laciTerbuka ? 'Tutup menu' : 'Buka menu'}
-          aria-expanded={laciTerbuka}
-          aria-controls="menu-utama"
-          onClick={() => setLaciTerbuka((t) => !t)}
-        >
-          <Ikon nama={laciTerbuka ? 'silang' : 'menu'} ukuran={20} />
-        </button>
+          className="tirai"
+          aria-label="Tutup menu"
+          onClick={() => setLaciTerbuka(false)}
+        />
+      )}
 
-        <NavLink to="/dashboard" className="topnav__merek">
-          <Ikon nama="logo" ukuran={22} />
-          <span>iMitra</span>
+      <nav
+        id="menu-utama"
+        className="sidebar"
+        data-terbuka={laciTerbuka}
+        aria-label="Navigasi utama"
+      >
+        <NavLink to="/dashboard" className="sidebar__merek">
+          <Ikon nama="logo" ukuran={28} />
+          <span>
+            <span className="sidebar__merek-nama">iMitra</span>
+            <span className="sidebar__merek-sub">Pembiayaan Mikro Syariah</span>
+          </span>
         </NavLink>
 
-        <nav className="remah" aria-label="Remah roti">
-          {remah.map((r, i) => (
-            <span key={`${r.label}-${i}`} className="remah__item">
-              {i > 0 && (
-                <span className="remah__pemisah" aria-hidden="true">
-                  /
-                </span>
-              )}
-              {r.ke ? <NavLink to={r.ke}>{r.label}</NavLink> : <span>{r.label}</span>}
-            </span>
-          ))}
-        </nav>
-
-        <div className="topnav__kanan">
-          <NavLink
-            to="/notifikasi"
-            className="topnav__aksi"
-            aria-label={
-              belumDibaca > 0
-                ? `Notifikasi, ${belumDibaca} belum dibaca`
-                : 'Notifikasi, semua sudah dibaca'
-            }
-          >
-            <Ikon nama="lonceng" ukuran={20} />
-            {belumDibaca > 0 && (
-              /* Di atas 99 lencana melebar dan mendorong isi topnav; angka
-                 pastinya toh ada di halaman notifikasi. */
-              <span className="lencana">{belumDibaca > 99 ? '99+' : belumDibaca}</span>
-            )}
-          </NavLink>
-
-          <div className="akun" ref={bungkusAkun}>
-            <button
-              ref={tombolAkun}
-              type="button"
-              className="akun__tombol"
-              aria-expanded={menuAkun}
-              aria-haspopup="menu"
-              onClick={() => setMenuAkun((t) => !t)}
-            >
-              <span className="akun__inisial" aria-hidden="true">
-                {inisial(pengguna?.nama)}
-              </span>
-              <span className="akun__teks">
-                <span className="akun__nama">{pengguna?.nama}</span>
-                <span className="akun__peran">{pengguna?.peran}</span>
-              </span>
-            </button>
-
-            {menuAkun && (
-              <div className="akun__menu" role="menu">
-                <div className="akun__menu-kepala">
-                  <div style={{ fontWeight: 600 }}>{pengguna?.nama}</div>
-                  <span className="badge badge--info">{pengguna?.peran}</span>
-                </div>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="akun__menu-item"
-                  onClick={keluarSekarang}
-                >
-                  <Ikon nama="keluar" />
-                  Keluar
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <div className="layout">
-        {/*
-         * Tirai gelap di belakang laci. Sebagai <button> supaya bisa ditutup
-         * dengan ketukan DAN dengan keyboard; sebuah <div> ber-onClick hanya
-         * melayani yang pertama.
-         */}
-        {laciTerbuka && (
-          <button
-            type="button"
-            className="tirai"
-            aria-label="Tutup menu"
-            onClick={() => setLaciTerbuka(false)}
-          />
-        )}
-
-        <nav
-          id="menu-utama"
-          className="sidebar"
-          data-terbuka={laciTerbuka}
-          aria-label="Navigasi utama"
-        >
+        <div className="sidebar__menu">
           <div className="sidebar__judul">Menu</div>
-
           {menuTampil.map((m) => (
             <NavLink
               key={m.ke}
@@ -327,15 +218,90 @@ export function Layout({ children }: { children: ReactNode }) {
               )}
             </NavLink>
           ))}
+        </div>
 
-          <div style={{ flex: 1 }} />
+        <div style={{ flex: 1 }} />
 
-          {/* Hanya tampak di ponsel: di desktop, keluar ada di menu akun. */}
-          <button className="tombol tombol--sekunder tombol--blok sidebar__keluar" onClick={keluarSekarang}>
-            <Ikon nama="keluar" />
-            Keluar
+        {/* Hanya tampak di ponsel: di desktop, Keluar ada di topbar. */}
+        <button
+          className="tombol tombol--sekunder tombol--blok sidebar__keluar"
+          onClick={keluarSekarang}
+        >
+          <Ikon nama="keluar" />
+          Keluar
+        </button>
+      </nav>
+
+      <div className="kolom-utama">
+        <header className="topnav">
+          <button
+            ref={tombolLaci}
+            type="button"
+            className="topnav__hamburger"
+            aria-label={laciTerbuka ? 'Tutup menu' : 'Buka menu'}
+            aria-expanded={laciTerbuka}
+            aria-controls="menu-utama"
+            onClick={() => setLaciTerbuka((t) => !t)}
+          >
+            <Ikon nama={laciTerbuka ? 'silang' : 'menu'} ukuran={20} />
           </button>
-        </nav>
+
+          {/* Merek di topbar hanya muncul di ponsel, saat sidebar tersembunyi. */}
+          <NavLink to="/dashboard" className="topnav__merek">
+            <Ikon nama="logo" ukuran={22} />
+            <span>iMitra</span>
+          </NavLink>
+
+          <nav className="remah" aria-label="Remah roti">
+            {remah.map((r, i) => (
+              <span key={`${r.label}-${i}`} className="remah__item">
+                {i > 0 && (
+                  <span className="remah__pemisah" aria-hidden="true">
+                    /
+                  </span>
+                )}
+                {r.ke ? <NavLink to={r.ke}>{r.label}</NavLink> : <span>{r.label}</span>}
+              </span>
+            ))}
+          </nav>
+
+          <div className="topnav__kanan">
+            <NavLink
+              to="/notifikasi"
+              className="topnav__aksi"
+              aria-label={
+                belumDibaca > 0
+                  ? `Notifikasi, ${belumDibaca} belum dibaca`
+                  : 'Notifikasi, semua sudah dibaca'
+              }
+            >
+              <Ikon nama="lonceng" ukuran={20} />
+              {belumDibaca > 0 && (
+                /* Di atas 99 lencana melebar dan mendorong isi topbar; angka
+                   pastinya toh ada di halaman notifikasi. */
+                <span className="lencana">{belumDibaca > 99 ? '99+' : belumDibaca}</span>
+              )}
+            </NavLink>
+
+            {/*
+             * IDENTITAS DAN PERAN TETAP TERLIHAT.
+             *
+             * Seluruh aplikasi ini berperilaku berbeda menurut peran: menu yang
+             * muncul, tombol yang aktif, dan pengajuan yang terlihat. Saat demo,
+             * penilai berganti akun berkali-kali dalam hitungan menit. Tanpa
+             * penanda peran yang tetap di layar, satu-satunya cara mengetahui
+             * sedang masuk sebagai siapa adalah menebak dari menu yang tampil.
+             */}
+            <span className="topnav__pengguna">
+              <span className="topnav__pengguna-nama">{pengguna?.nama}</span>
+              <span className="badge badge--info">{pengguna?.peran}</span>
+            </span>
+
+            <button type="button" className="topnav__keluar" onClick={keluarSekarang}>
+              Keluar
+            </button>
+          </div>
+        </header>
 
         <main id="konten-utama" className="konten">
           {children}
@@ -343,13 +309,4 @@ export function Layout({ children }: { children: ReactNode }) {
       </div>
     </div>
   )
-}
-
-/** Dua huruf pertama dari kata pertama dan terakhir nama. */
-function inisial(nama?: string): string {
-  if (!nama) return '?'
-  const kata = nama.trim().split(/\s+/)
-  const depan = kata[0]?.[0] ?? ''
-  const belakang = kata.length > 1 ? (kata[kata.length - 1][0] ?? '') : ''
-  return (depan + belakang).toUpperCase()
 }

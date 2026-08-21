@@ -12,6 +12,7 @@ import {
 } from '../domain/approval.js'
 import { pastikanDapatDiajukan } from '../domain/grade.js'
 import * as repo from '../repositories/pengajuan.repo.js'
+import { pastikanMarginSudahDitetapkan } from './margin.service.js'
 import { bacaAmbangApproval, bacaRentangGrade } from './parameter.service.js'
 import { ubahStatus } from './status.service.js'
 import { tulisAudit, AKSI } from './audit.service.js'
@@ -92,6 +93,13 @@ export async function ajukanApproval(aktor: PenggunaToken, pengajuanId: string) 
     }
     throw e
   }
+
+  /**
+   * SRS 3.2: `SKORED → MENUNGGU_APPROVAL_L1: margin dalam rentang LALU diajukan`.
+   * Tanpa pemeriksaan ini, pengajuan bisa melewati seluruh jenjang approval
+   * tanpa satu pun angka margin, dan kekosongan itu baru ketahuan saat akad.
+   */
+  pastikanMarginSudahDitetapkan(pengajuan)
 
   await prisma.$transaction(async (tx) => {
     await ubahStatus(tx, {

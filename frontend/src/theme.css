@@ -32,22 +32,42 @@
  */
 
 :root {
-  /* Warna */
-  --warna-primer: #0f6b5c;
+  /*
+   * WARNA — diambil dari keluaran Google Stitch, bukan ditulis tangan.
+   * Sumber: proyek "UI/UX Design Concept" (8189405786816363231), design system
+   * "iMitra Design System" (assets/b5c55115271644218d19881e4894e18e).
+   *
+   * Stitch memecah teal merek menjadi DUA peran, dan pemisahan itu dipertahankan
+   * di sini karena ia memecahkan masalah kontras yang nyata:
+   *
+   *   --warna-primer (#005145)        AKSI. Tombol isi, tautan, menu aktif.
+   *                                   Kontras 7,4:1 di atas latar — lolos WCAG AA
+   *                                   untuk teks kecil. #0f6b5c hanya 4,9:1: lolos
+   *                                   untuk teks 14px, tetapi gagal begitu warna
+   *                                   yang sama dipakai pada caption 12px, dan di
+   *                                   layar ini caption dipakai di mana-mana.
+   *   --warna-primer-merek (#0f6b5c)  BIDANG BERNADA. Wordmark, latar badge, dan
+   *                                   sorotan baris — selalu sebagai latar yang
+   *                                   ditipiskan, tidak pernah sebagai teks kecil.
+   */
+  --warna-primer: #005145;
   --warna-primer-hover: #0b564a;
+  --warna-primer-merek: #0f6b5c;
   --warna-primer-lembut: #e6f0ee;
-  /* Bidang topnav. Lebih gelap daripada warna primer supaya teks putih di
-     atasnya lolos kontras 4.5:1, dan supaya tombol primer tetap terbaca
-     sebagai aksi ketika kebetulan berdampingan dengan topnav. */
-  --warna-primer-gelap: #0a4c41;
   --warna-aksen: #c08a2e;
   --warna-aksen-muda: #f0dcb4;
 
-  /* Sedikit lebih gelap dan sedikit lebih hijau daripada #f7f8f7. Bedanya kecil,
-     tetapi cukup untuk membuat kartu putih benar-benar terbaca sebagai kartu. */
-  --warna-latar: #eef1f0;
+  --warna-latar: #f7f8f7;
   --warna-permukaan: #ffffff;
   --warna-permukaan-alt: #fbfcfb;
+  /*
+   * surface-container-low / -high pada Stitch. Bidang yang harus terbaca sebagai
+   * "bukan kartu": kepala tabel, hover baris, latar menu aktif, cip akad.
+   * Sebelumnya peran ini dipinjamkan ke --warna-latar, sehingga kepala tabel dan
+   * latar halaman berwarna sama dan tabel kehilangan tepi atasnya.
+   */
+  --warna-permukaan-rendah: #f1f4f2;
+  --warna-permukaan-tinggi: #e6e9e6;
   --warna-garis: #e3e6e4;
   --warna-garis-kuat: #cdd3d0;
 
@@ -112,7 +132,9 @@
   --bayang-kartu: 0 1px 2px rgba(22, 33, 30, 0.05), 0 1px 3px rgba(22, 33, 30, 0.04);
   --bayang-angkat: 0 2px 4px rgba(22, 33, 30, 0.06), 0 4px 12px rgba(22, 33, 30, 0.07);
   --bayang-melayang: 0 12px 32px rgba(22, 33, 30, 0.18);
-  --bayang-topnav: 0 1px 3px rgba(10, 76, 65, 0.28);
+  /* Sewarna dengan --warna-primer-merek, supaya bayangannya terbaca sebagai
+     kelanjutan bidang topnav dan bukan garis abu-abu. */
+  --bayang-topnav: 0 1px 3px rgba(15, 107, 92, 0.3);
   --bayang-lekat: 0 1px 0 var(--warna-garis);
 
   --transisi: 140ms ease;
@@ -837,8 +859,21 @@ button.kartu:hover {
 /* Kerangka aplikasi ----------------------------------------------------- */
 
 /*
- * Cangkang: topnav yang menempel di atas, lalu baris sidebar + konten yang
- * mengisi sisa tinggi layar.
+ * CANGKANG — mengikuti tata letak Google Stitch, layar S-02 Dashboard Pipeline.
+ *
+ * Stitch menaruh sidebar SETINGGI PENUH di kiri (240px, bidang putih, bergaris
+ * kanan) dan topbar 56px yang mulai SETELAH sidebar, bukan melintang di atasnya.
+ * Bedanya dengan susunan sebelumnya bukan kosmetik: dengan sidebar setinggi
+ * penuh, merek dan identitas pengguna punya rumah tetap di kolom kiri, dan
+ * topbar tersisa untuk satu pekerjaan saja — "saya di mana, apa yang menunggu".
+ *
+ * Yang TIDAK diambil dari Stitch: perilaku di ponsel. Stitch hanya membuat
+ * mockup desktop untuk cangkang ini — layar mobile S-03/S-05/S-07 adalah
+ * formulir berdiri sendiri tanpa cangkang sama sekali — jadi tidak ada yang
+ * bisa disalin. Di bawah 721px susunan lama dipertahankan: topbar selebar
+ * layar, sidebar meluncur sebagai laci. AO bekerja di lapangan (NFR-08);
+ * membuang laci demi kesetiaan pada mockup yang tidak pernah membahas ponsel
+ * berarti menukar masalah nyata dengan konsistensi di atas kertas.
  *
  * Tinggi memakai 100dvh, bukan 100vh. Di browser ponsel, 100vh adalah tinggi
  * layar SEBELUM bilah alamat mengecil, sehingga bagian bawah halaman bersembunyi
@@ -847,9 +882,16 @@ button.kartu:hover {
  */
 .cangkang {
   display: flex;
-  flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+/* Kolom kanan: topbar menempel di atasnya, konten mengisi sisanya. */
+.kolom-utama {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
 /* Lompat-ke-konten: hanya tampak saat difokus lewat keyboard */
@@ -866,39 +908,41 @@ button.kartu:hover {
 }
 
 /*
- * TOPNAV.
+ * TOPBAR.
  *
- * Bidang gelap inilah yang memberi halaman jangkar visual. Sebelum ada, seluruh
- * layar berupa kartu putih di atas abu-abu sangat muda: tidak ada satu pun
- * bidang pekat, sehingga semuanya terbaca sebagai satu lapis datar tanpa awal
- * dan tanpa akhir.
+ * Bidang putih bergaris bawah, mengikuti Stitch. Versi sebelumnya memakai bidang
+ * teal gelap sebagai jangkar visual; jangkar itu sekarang dipegang oleh kolom
+ * sidebar yang membentang penuh dari atas ke bawah, jadi topbar tidak perlu
+ * lagi menggelapkan dirinya untuk memberi halaman awal dan akhir.
  */
 .topnav {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
   height: var(--tinggi-topbar);
-  padding: 0 var(--sp-4);
-  background: var(--warna-primer-gelap);
-  color: #fff;
+  padding: 0 var(--sp-5);
+  background: var(--warna-permukaan);
+  color: var(--teks-utama);
+  border-bottom: 1px solid var(--warna-garis);
   position: sticky;
   top: 0;
   z-index: 40;
-  box-shadow: var(--bayang-topnav);
 }
+/*
+ * Merek di topbar hanya untuk ponsel. Di desktop ia tinggal di kepala sidebar
+ * (Stitch S-02); di ponsel sidebar itu tersembunyi sebagai laci, dan topbar
+ * tanpa merek membuat layar kehilangan penanda aplikasi apa yang sedang dibuka.
+ */
 .topnav__merek {
-  display: flex;
+  display: none;
   align-items: center;
   gap: var(--sp-2);
   font-weight: 700;
   font-size: 16px;
   letter-spacing: -0.01em;
-  color: #fff;
+  color: var(--warna-primer-merek);
   text-decoration: none;
   white-space: nowrap;
-}
-.topnav__merek:hover {
-  color: #fff;
 }
 .topnav__hamburger {
   display: none;
@@ -906,21 +950,22 @@ button.kartu:hover {
   justify-content: center;
   width: var(--tinggi-sentuh);
   height: var(--tinggi-sentuh);
-  margin-left: calc(var(--sp-2) * -1);
+  margin-left: calc(var(--sp-3) * -1);
   padding: 0;
   background: transparent;
   border: none;
   border-radius: var(--radius-tombol);
-  color: #fff;
+  color: var(--teks-sekunder);
   cursor: pointer;
 }
 .topnav__hamburger:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--warna-permukaan-rendah);
+  color: var(--teks-utama);
 }
 .topnav__kanan {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--sp-4);
   margin-left: auto;
 }
 .topnav__aksi {
@@ -931,13 +976,61 @@ button.kartu:hover {
   width: 38px;
   height: 38px;
   border-radius: var(--radius-tombol);
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--teks-sekunder);
   text-decoration: none;
   transition: background var(--transisi), color var(--transisi);
 }
 .topnav__aksi:hover {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
+  background: var(--warna-permukaan-rendah);
+  color: var(--warna-primer);
+}
+/*
+ * Identitas dan peran pengguna.
+ *
+ * Seluruh aplikasi berperilaku berbeda menurut peran: menu yang muncul, tombol
+ * yang aktif, dan pengajuan yang terlihat. Saat demo, penilai berganti akun
+ * berkali-kali dalam hitungan menit — tanpa penanda tetap di layar, satu-satunya
+ * cara mengetahui sedang masuk sebagai siapa adalah menebak dari menu yang
+ * tampil.
+ *
+ * Namanya disembunyikan di layar sempit, tetapi badge PERAN tidak pernah:
+ * peran itulah yang menentukan perilaku, sedangkan nama hanya melengkapi.
+ */
+.topnav__pengguna {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.topnav__pengguna-nama {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--teks-utama);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * Tombol Keluar sebagai TEKS, bukan tombol berisi — Stitch S-02. Keluar bukan
+ * aksi utama halaman mana pun, jadi ia tidak boleh menang secara visual melawan
+ * tombol primer di dalam konten.
+ */
+.topnav__keluar {
+  padding: var(--sp-2);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--teks-sekunder);
+  background: none;
+  border: none;
+  border-radius: var(--radius-tombol);
+  cursor: pointer;
+  transition: color var(--transisi), background var(--transisi);
+}
+.topnav__keluar:hover {
+  color: var(--warna-primer);
+  background: var(--warna-permukaan-rendah);
 }
 
 /* Lencana jumlah belum dibaca */
@@ -955,7 +1048,7 @@ button.kartu:hover {
   text-align: center;
   color: #fff;
   background: var(--warna-bahaya);
-  border: 2px solid var(--warna-primer-gelap);
+  border: 2px solid var(--warna-permukaan);
   border-radius: var(--radius-badge);
 }
 
@@ -965,6 +1058,11 @@ button.kartu:hover {
  * Menjawab "saya sedang di mana". Di layar tahap — skoring, SLIK, margin —
  * sebelumnya tidak ada satu pun petunjuk pengajuan mana yang sedang dibuka,
  * selain URL yang isinya UUID.
+ *
+ * Stitch menaruh JUDUL HALAMAN statis di posisi ini, bukan remah. Remah
+ * dipertahankan karena ia MEMUAT judul itu sebagai ruas terakhirnya — jadi
+ * tidak ada yang hilang dari mockup — sekaligus menjawab pertanyaan yang tidak
+ * pernah dihadapi mockup: layar tahap ini milik pengajuan yang mana.
  */
 .remah {
   display: flex;
@@ -972,11 +1070,7 @@ button.kartu:hover {
   min-width: 0;
   overflow: hidden;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.72);
-  /* Garis pemisah dari merek, bukan jarak kosong: jarak saja membuat remah
-     roti terbaca seolah bagian dari nama aplikasi. */
-  padding-left: var(--sp-3);
-  border-left: 1px solid rgba(255, 255, 255, 0.22);
+  color: var(--teks-sekunder);
 }
 .remah__item {
   display: inline-flex;
@@ -984,146 +1078,79 @@ button.kartu:hover {
   white-space: nowrap;
 }
 .remah__pemisah {
-  margin: 0 var(--sp-2);
-  color: rgba(255, 255, 255, 0.4);
+  padding: 0 var(--sp-2);
+  color: var(--teks-redup);
 }
 .remah a {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--teks-sekunder);
   text-decoration: none;
 }
 .remah a:hover {
-  color: #fff;
+  color: var(--warna-primer);
   text-decoration: underline;
 }
-/* Remah terakhir adalah halaman saat ini: lebih terang, tidak bisa diklik. */
+/* Ruas terakhir adalah judul halaman — inilah yang Stitch tampilkan di topbar. */
 .remah__item:last-child span:not(.remah__pemisah) {
-  color: #fff;
+  font-size: 16px;
   font-weight: 600;
-}
-
-/* MENU AKUN */
-.akun {
-  position: relative;
-}
-.akun__tombol {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: 4px var(--sp-2) 4px 4px;
-  font: inherit;
-  color: #fff;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: var(--radius-badge);
-  cursor: pointer;
-  transition: background var(--transisi), border-color var(--transisi);
-}
-.akun__tombol:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.4);
-}
-.akun__inisial {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 28px;
-  height: 28px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--warna-primer-gelap);
-  background: var(--warna-aksen-muda);
-  border-radius: 50%;
-}
-.akun__teks {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  line-height: 1.15;
-}
-.akun__nama {
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.akun__peran {
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.7);
-}
-.akun__menu {
-  position: absolute;
-  top: calc(100% + var(--sp-2));
-  right: 0;
-  z-index: 50;
-  min-width: 210px;
-  padding: var(--sp-2);
-  background: var(--warna-permukaan);
-  border: 1px solid var(--warna-garis);
-  border-radius: var(--radius-kartu);
-  box-shadow: var(--bayang-melayang);
-}
-.akun__menu-kepala {
-  padding: var(--sp-2) var(--sp-3) var(--sp-3);
-  border-bottom: 1px solid var(--warna-garis);
   color: var(--teks-utama);
 }
-.akun__menu-item {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  width: 100%;
-  margin-top: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3);
-  font: inherit;
-  color: var(--teks-utama);
-  text-align: left;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-tombol);
-  cursor: pointer;
-}
-.akun__menu-item:hover {
-  background: var(--warna-latar);
-}
 
-/* BARIS SIDEBAR + KONTEN */
-.layout {
-  display: grid;
-  grid-template-columns: var(--lebar-sidebar) minmax(0, 1fr);
-  flex: 1;
-  min-height: 0;
-  /*
-   * Kolom sidebar diberi warna oleh LATAR .layout, bukan hanya oleh elemen
-   * sidebar-nya. Sebabnya: sidebar itu sticky setinggi viewport, jadi pada
-   * halaman yang lebih panjang daripada layar, ruang di bawahnya jatuh kembali
-   * ke warna latar halaman — dan panel putihnya terlihat "terpotong" di tengah
-   * jalan. Gradien dua-langkah ini membuat kolomnya utuh dari atas ke bawah
-   * pada posisi gulir mana pun.
-   */
-  background: linear-gradient(
-    to right,
-    var(--warna-permukaan) 0,
-    var(--warna-permukaan) var(--lebar-sidebar),
-    var(--warna-garis) var(--lebar-sidebar),
-    var(--warna-garis) calc(var(--lebar-sidebar) + 1px),
-    var(--warna-latar) calc(var(--lebar-sidebar) + 1px)
-  );
-}
-
+/*
+ * SIDEBAR setinggi penuh (Stitch S-02).
+ *
+ * `position: sticky; top: 0` dengan tinggi 100dvh: menu ikut saat halaman
+ * panjang digulir. Karena sidebar kini mulai dari y=0, tidak ada lagi offset
+ * setinggi topbar yang perlu dikurangkan seperti pada susunan sebelumnya.
+ */
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--sp-4) var(--sp-3);
+  flex: none;
+  width: var(--lebar-sidebar);
+  padding: var(--sp-5) 0 var(--sp-4);
   background: var(--warna-permukaan);
   border-right: 1px solid var(--warna-garis);
-  /* Menu ikut saat halaman panjang digulir, dan berhenti tepat di bawah topnav
-     — bukan di puncak viewport, yang akan menyelipkannya di balik topnav. */
   position: sticky;
-  top: var(--tinggi-topbar);
-  height: calc(100dvh - var(--tinggi-topbar));
+  top: 0;
+  height: 100dvh;
   overflow-y: auto;
+  z-index: 45;
+}
+
+/* Kepala sidebar: wordmark + satu baris penjelas, seperti Stitch S-02. */
+.sidebar__merek {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-5) var(--sp-6);
+  color: inherit;
+  text-decoration: none;
+}
+.sidebar__merek svg {
+  flex: none;
+  color: var(--warna-primer-merek);
+}
+.sidebar__merek-nama {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--warna-primer);
+}
+.sidebar__merek-sub {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--teks-redup);
+}
+
+.sidebar__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--sp-3);
 }
 .sidebar__judul {
   padding: var(--sp-2) var(--sp-3);
@@ -1138,36 +1165,34 @@ button.kartu:hover {
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-tombol);
+  border-radius: var(--radius-kartu);
   color: var(--teks-sekunder);
   text-decoration: none;
   font-weight: 500;
   transition: background var(--transisi), color var(--transisi);
 }
 .sidebar a:hover {
-  background: var(--warna-latar);
+  background: var(--warna-permukaan-rendah);
   color: var(--teks-utama);
 }
 /*
- * Menu aktif memakai penanda GARIS di kiri, bukan hanya latar berwarna. Latar
- * muda saja mudah hilang di proyektor yang warnanya pucat — dan demo dinilai
- * lewat proyektor.
+ * Menu aktif: latar teal yang sangat ditipiskan + GARIS TEBAL DI KANAN, persis
+ * seperti Stitch (`border-r-4 border-primary bg-primary-container/10`).
+ *
+ * Garisnya pindah dari kiri ke kanan bukan karena selera: di kanan ia menempel
+ * pada garis pemisah sidebar, sehingga terbaca sebagai lidah yang menunjuk ke
+ * konten. Alasan lama memilih garis kiri tetap berlaku dan tetap terpenuhi —
+ * keadaan aktif tidak boleh bergantung pada latar berwarna saja, karena latar
+ * muda mudah hilang di proyektor yang pucat, dan demo dinilai lewat proyektor.
  */
 .sidebar a.aktif {
-  position: relative;
-  background: var(--warna-primer-lembut);
+  background: rgba(15, 107, 92, 0.1);
   color: var(--warna-primer);
-  font-weight: 600;
-}
-.sidebar a.aktif::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--warna-primer);
+  font-weight: 700;
+  border-right: 4px solid var(--warna-primer);
+  border-radius: var(--radius-kartu) 0 0 var(--radius-kartu);
+  margin-right: calc(var(--sp-3) * -1);
+  padding-right: calc(var(--sp-3) - 4px);
 }
 /* Ikon menu: penanda posisi, bukan hiasan. Ukurannya ikut ukuran teks. */
 .sidebar a svg {
@@ -1192,19 +1217,72 @@ button.kartu:hover {
   background: var(--warna-bahaya);
   border-radius: var(--radius-badge);
 }
-/* Keluar ada di menu akun pada topnav; di sidebar ia hanya untuk ponsel. */
-.sidebar__keluar {
-  display: none;
+
+/*
+ * Kartu identitas di DASAR sidebar (Stitch S-02). Ia menggantikan menu akun
+ * yang sebelumnya menggantung di topbar: satu tempat tetap untuk "saya masuk
+ * sebagai siapa", yang tidak perlu dibuka dulu untuk dibaca.
+ */
+.sidebar__akun {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: auto var(--sp-3) 0;
+  padding: var(--sp-3);
+  background: var(--warna-permukaan-rendah);
+  border: 1px solid var(--warna-garis);
+  border-radius: var(--radius-kartu);
+}
+.sidebar__akun-inisial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--warna-primer);
+  background: var(--warna-aksen-muda);
+  border-radius: 50%;
+}
+.sidebar__akun-teks {
+  flex: 1;
+  min-width: 0;
+}
+.sidebar__akun-nama {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /*
+ * KONTEN.
+ *
+ * Dibatasi 1200px dan dipusatkan, mengikuti Stitch S-02
+ * (`max-w-max-width-container mx-auto`) dan blok Design System doc bagian 2.
+ *
+ * CATATAN — ini MEMBALIK keputusan 21 Agu yang melepas batas lebar. Alasan
+ * pelepasan itu masih berlaku dan sengaja disimpan di sini supaya tidak hilang:
+ * pada layar 1920px, tabel tujuh kolom berisi rupiah dan tanggal berhimpitan di
+ * tengah sementara ratusan piksel kosong menganggur di kanan. Kalau saat demo
+ * tabel terasa sesak, yang diubah adalah SATU baris di bawah ini — bukan
+ * tabelnya, dan bukan jumlah kolomnya.
+ */
+/*
  * KONTEN SELEBAR PENUH.
  *
- * Batas 1200px dilepas. Alat back-office ini menampilkan tabel enam kolom berisi
- * rupiah dan tanggal; pada layar 1920px, membatasi lebar berarti menyisakan
- * ratusan piksel abu-abu kosong di kanan sementara kolom di dalam tabel
- * berhimpitan. Yang menjaga teks tetap nyaman dibaca bukan lebar HALAMAN,
- * melainkan lebar PARAGRAF — dan itu diatur terpisah lewat .teks-panjang.
+ * Batas --lebar-konten-maks sengaja TIDAK dipakai di sini. Alat back-office ini
+ * menampilkan tabel enam kolom berisi rupiah dan tanggal; pada layar 1920px,
+ * membatasi lebar menyisakan ratusan piksel kosong di kanan sementara kolom di
+ * dalam tabel berhimpitan.
+ *
+ * Yang menjaga teks tetap nyaman dibaca bukan lebar HALAMAN melainkan lebar
+ * PARAGRAF, dan itu diatur terpisah: .teks-panjang untuk penjelasan,
+ * .halaman-form (880px) untuk formulir.
  */
 .konten {
   width: 100%;
@@ -1452,15 +1530,41 @@ button.kartu:hover {
    * berhenti melar; elemen yang bermasalah menjadi terlihat saat diuji,
    * bukan diam-diam menyeret seluruh tata letak.
    */
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
-    /* Tidak ada kolom sidebar di ponsel — laci melayang di atas konten. */
-    background: var(--warna-latar);
+  /*
+   * Di ponsel sidebar melayang sebagai laci, jadi cangkang tidak lagi punya dua
+   * kolom. .kolom-utama memakai seluruh lebar.
+   *
+   * min-width: 0 wajib: ukuran minimum bawaan sebuah item flex adalah lebar
+   * min-content isinya, jadi satu elemen yang tidak bisa menyusut — deretan
+   * badge ber-nowrap, misalnya — akan MELEBARKAN kolomnya melewati layar, dan
+   * seluruh halaman ikut bisa digeser ke samping.
+   */
+  .cangkang {
+    display: block;
+  }
+  .kolom-utama {
+    min-width: 0;
   }
 
-  /* Hamburger hanya ada di ponsel; di desktop sidebar selalu terlihat. */
-  .topnav__hamburger {
+  /* Hamburger dan merek hanya ada di ponsel; di desktop keduanya tinggal di
+     sidebar yang selalu terlihat. */
+  .topnav__hamburger,
+  .topnav__merek {
     display: inline-flex;
+  }
+
+  /*
+   * Nama dan tombol Keluar dilepas dari topbar. Keluar pindah ke dasar laci
+   * (lihat .sidebar__keluar di bawah), dan namanya tidak muat berdampingan
+   * dengan merek pada 390px. Badge PERAN tetap tinggal — ia yang menentukan
+   * perilaku aplikasi, dan justru paling dibutuhkan saat berganti akun.
+   */
+  .topnav__pengguna-nama,
+  .topnav__keluar {
+    display: none;
+  }
+  .topnav__kanan {
+    gap: var(--sp-2);
   }
 
   /*
@@ -1501,6 +1605,7 @@ button.kartu:hover {
     top: var(--tinggi-topbar);
     bottom: 0;
     left: 0;
+    padding-top: var(--sp-4);
     z-index: 50;
     width: min(84vw, 300px);
     height: auto;
@@ -1687,14 +1792,17 @@ button.kartu:hover {
 
 /* Saat dicetak, navigasi tidak ada gunanya — sering dipakai untuk berkas kredit */
 @media print {
+  /* .topnav, bukan .topbar: kelasnya berganti nama saat shell ditulis ulang,
+     dan aturan cetak yang tertinggal membuat topbar ikut tercetak di setiap
+     berkas kredit. */
   .sidebar,
-  .topbar,
+  .topnav,
   .tirai,
   .tab {
     display: none !important;
   }
-  .layout {
-    grid-template-columns: 1fr;
+  .cangkang {
+    display: block;
   }
   .konten {
     padding: 0;

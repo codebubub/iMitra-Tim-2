@@ -1,8 +1,15 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
-import { hitungDanSimpanSkoring } from '../services/skoring.service.js'
+import { bacaPrasyaratSkoring, hitungDanSimpanSkoring } from '../services/skoring.service.js'
 import { overrideGradeSkoring } from '../services/override-skoring.service.js'
+
+const skemaSkoring = z
+  .object({
+    /** Wajib bila ada anggota berkolektibilitas 2 (FR-05, Tabel 4.2). */
+    catatanAnalis: z.string().optional(),
+  })
+  .optional()
 
 const skemaOverride = z.object({
   gradeFinal: z.number().int().min(1).max(5),
@@ -10,19 +17,36 @@ const skemaOverride = z.object({
 })
 
 export async function skoringRoutes(app: FastifyInstance): Promise<void> {
-  app.post(
-    '/api/pengajuan/:id/skoring',
-    { config: { peran: ['ANL'] } },
+  app.post('/api/pengajuan/:id/skoring', { config: { peran: ['ANL'] } }, async (req) => {
+    const { id } = req.params as { id: string }
+    const body = skemaSkoring.parse(req.body ?? undefined)
+    return hitungDanSimpanSkoring({
+      pengajuanId: id,
+      aktor: req.pengguna!,
+      catatanAnalis: body?.catatanAnalis,
+    })
+  })
+
+  /**
+   * Prasyarat BR-03/BR-04 apa adanya, untuk varian "terblokir" layar S-09.
+   *
+   * Ada supaya analis tahu APA yang kurang sebelum menekan tombol, bukan hanya
+   * setelah menerima 422. Aturannya tetap ditegakkan di POST — endpoint ini
+   * murni pembacaan.
+   */
+  app.get(
+    '/api/pengajuan/:id/skoring/prasyarat',
+    { config: { peran: ['ANL', 'KCP', 'KC', 'KOM', 'ADM'] } },
     async (req) => {
       const { id } = req.params as { id: string }
-      const hasil = await hitungDanSimpanSkoring({ pengajuanId: id, diperiksaOleh: (req as { pengguna?: { id: string } }).pengguna!.id })
-      return hasil
+      return bacaPrasyaratSkoring(id)
     },
   )
 
   app.get(
     '/api/pengajuan/:id/skoring',
-    { config: { peran: ['ANL'] } },
+    // Approver membaca dasar keputusan yang sama dengan analis (SDD BAB 5).
+    { config: { peran: ['ANL', 'KCP', 'KC', 'KOM', 'ADM'] } },
     async (req) => {
       const { id } = req.params as { id: string }
       const hasil = await prisma.hasilSkoring.findFirst({
@@ -73,13 +97,9 @@ export async function skoringRoutes(app: FastifyInstance): Promise<void> {
     },
   )
 
-  app.post(
-    '/api/pengajuan/:id/skoring/override',
-    { config: { peran: ['ANL'] } },
-    async (req) => {
-      const { id } = req.params as { id: string }
-      const { gradeFinal, alasan } = skemaOverride.parse(req.body)
-      return overrideGradeSkoring(req.pengguna!, id, gradeFinal, alasan)
-    },
-  )
+  app.post('/api/pengajuan/:id/skoring/override', { config: { peran: ['ANL'] } }, async (req) => {
+    const { id } = req.params as { id: string }
+    const { gradeFinal, alasan } = skemaOverride.parse(req.body)
+    return overrideGradeSkoring(req.pengguna!, id, gradeFinal, alasan)
+  })
 }

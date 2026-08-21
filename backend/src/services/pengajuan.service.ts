@@ -1,4 +1,4 @@
-import type { Akad, JenisNasabah } from '@prisma/client'
+import type { Akad, JenisNasabah, StatusPengajuan } from '@prisma/client'
 import { prisma, rupiahKeNumber } from '../lib/prisma.js'
 import { AksesDitolak, PelanggaranAturan, TidakDitemukan } from '../lib/errors.js'
 import { kunciTanggal, rakitNomorReferensi } from '../domain/nomor-referensi.js'
@@ -220,20 +220,225 @@ export async function ringkasanPengajuan(pengajuanId: string) {
   }
 }
 
-/** Daftar pengajuan, DIFILTER PERAN DI QUERY SERVER — bukan di frontend (FR-12). */
-export async function daftarPengajuan(aktor: PenggunaToken, filterStatus?: string) {
-  const where: Record<string, unknown> = {}
-  if (filterStatus) where.status = filterStatus
-  if (aktor.peran === 'AO') where.dibuatOleh = aktor.id
+/**
+ * Ubah data pengajuan selama masih DRAFT atau DIKEMBALIKAN (FR-02, SDD BAB 5).
+ *
+ * Endpoint ini sempat tidak ada sama sekali, dan yang hilang bukan sekadar satu
+ * baris kontrak: tanpa ia, pengajuan yang di-RETURN approver TIDAK BISA
+ * diperbaiki AO. Alur `MENUNGGU_APPROVAL_Lx → DIKEMBALIKAN → SUBMITTED` di
+ * SRS 3.2 berhenti di tengah, dan satu-satunya jalan keluar adalah membuat
+ * pengajuan baru — beserta nomor referensi baru, yang justru memutus jejak.
+ *
+ * Yang boleh diubah SENGAJA dibatasi pada akad dan tenor. Plafon anggota punya
+ * endpointnya sendiri (`PATCH .../anggota/{anggotaId}`), dan identitas nasabah
+ * tidak diubah lewat sini karena ia menyentuh baris `nasabah` yang dipakai
+ * pengajuan lain.
+ */
+export type MasukanUbahPengajuan = {
+  akad?: Akad
+  tenorBulan?: number
+}
+
+const STATUS_BOLEH_UBAH = ['DRAFT', 'DIKEMBALIKAN']
+
+export async function ubahPengajuan(
+  aktor: PenggunaToken,
+  pengajuanId: string,
+  masukan: MasukanUbahPengajuan,
+) {
+  const pengajuan = await prisma.pengajuan.findUnique({ where: { id: pengajuanId } })
+  if (!pengajuan) throw new TidakDitemukan('Pengajuan tidak ditemukan')
+
+  // Otorisasi LAPIS 2: peran sudah dicek middleware, kepemilikan dicek di sini.
+  if (pengajuan.dibuatOleh !== aktor.id) {
+    throw new AksesDitolak('Anda hanya dapat mengubah pengajuan milik Anda sendiri')
+  }
+  if (!STATUS_BOLEH_UBAH.includes(pengajuan.status)) {
+    throw new PelanggaranAturan(
+      'FR-02',
+      `Pengajuan berstatus ${pengajuan.status} tidak dapat diubah; hanya DRAFT atau DIKEMBALIKAN`,
+    )
+  }
+  if (masukan.tenorBulan !== undefined && (masukan.tenorBulan < 3 || masukan.tenorBulan > 36)) {
+    throw new PelanggaranAturan('FR-02', 'Tenor harus antara 3 dan 36 bulan')
+  }
+
+  const perubahan: Record<string, unknown> = {}
+  if (masukan.akad !== undefined && masukan.akad !== pengajuan.akad) perubahan.akad = masukan.akad
+  if (masukan.tenorBulan !== undefined && masukan.tenorBulan !== pengajuan.tenorBulan) {
+    perubahan.tenorBulan = masukan.tenorBulan
+  }
+
+  if (Object.keys(perubahan).length > 0) {
+    await prisma.$transaction(async (tx) => {
+      await tx.pengajuan.update({ where: { id: pengajuanId }, data: perubahan })
+
+      // BR-10 — perubahan data pengajuan pun punya aktor dan timestamp.
+      // Statusnya tidak berubah, jadi ini audit biasa, bukan ubahStatus().
+      await tulisAudit(tx, {
+        pengajuanId,
+        aktorId: aktor.id,
+        aktorPeran: aktor.peran,
+        aksi: AKSI.UBAH_STATUS,
+        statusSebelum: pengajuan.status,
+        statusSesudah: pengajuan.status,
+        metadata: {
+          sebab: 'Perubahan data pengajuan oleh AO',
+          akadSebelum: pengajuan.akad,
+          tenorSebelum: pengajuan.tenorBulan,
+          ...perubahan,
+        },
+      })
+    })
+  }
+
+  return ringkasanPengajuan(pengajuanId)
+}
+
+// ---------------------------------------------------------------------------
+//  FR-12 — cakupan daftar per peran
+// ---------------------------------------------------------------------------
+
+/** Tahap kerja ANL: sejak pengajuan masuk sampai keluar dari mejanya. */
+const TAHAP_KERJA_ANL: StatusPengajuan[] = [
+  'SUBMITTED',
+  'VERIFIKASI_DOKUMEN',
+  'DOKUMEN_DITOLAK',
+  'SLIK_OK',
+  'SLIK_GAGAL',
+  'SKORED',
+  'REJECTED_SLIK',
+  'REJECTED_SCORING',
+]
+
+const STATUS_MENUNGGU: Record<string, number> = {
+  MENUNGGU_APPROVAL_L1: 1,
+  MENUNGGU_APPROVAL_L2: 2,
+  MENUNGGU_APPROVAL_L3: 3,
+}
+
+type BarisPengajuanMentah = {
+  id: string
+  status: StatusPengajuan
+  anggota: { plafonDiajukan: bigint; statusAnggota: 'AKTIF' | 'DITOLAK' }[]
+}
+
+/**
+ * FR-12 — pembatasan peran, ditegakkan di SERVER.
+ *
+ * Sebelumnya hanya AO yang difilter; approver melihat seluruh pengajuan,
+ * termasuk yang masih menunggu level di bawahnya. Kriteria verifikasi FR-12
+ * berbunyi persis sebaliknya: "KC yang membuka dashboard tidak melihat satu pun
+ * pengajuan yang masih menunggu KCP".
+ *
+ * KENAPA SEBAGIAN PENYARINGAN TERJADI SETELAH QUERY. Level approval tidak
+ * disimpan — ia dihitung dari total plafon anggota AKTIF terhadap
+ * `ambang_approval` setiap kali dibaca (ADR-0002). Jadi "pengajuan yang berada
+ * di level saya" tidak dapat dinyatakan sebagai kolom di WHERE. Yang penting
+ * bagi FR-12 adalah penyaringan terjadi DI SERVER dan tidak dapat dimatikan
+ * dari klien — bukan bahwa ia terjadi di SQL.
+ */
+async function saringUntukPeran<T extends BarisPengajuanMentah>(
+  aktor: PenggunaToken,
+  baris: T[],
+): Promise<T[]> {
+  if (aktor.peran !== 'KCP' && aktor.peran !== 'KC' && aktor.peran !== 'KOM') return baris
+
+  const ambang = await bacaAmbangApproval()
+
+  // Pengajuan yang pernah ia putuskan tetap terlihat: menyembunyikan keputusan
+  // sendiri membuat approver tidak bisa menelusuri apa yang ia setujui kemarin,
+  // dan itu memperburuk pertanggungjawaban tanpa menambah kerahasiaan apa pun.
+  const pernahDiputuskan = new Set(
+    (
+      await prisma.keputusanApprovalRow.findMany({
+        where: { diputuskanOleh: aktor.id, pengajuanId: { in: baris.map((b) => b.id) } },
+        select: { pengajuanId: true },
+      })
+    ).map((k) => k.pengajuanId),
+  )
+
+  return baris.filter((p) => {
+    if (pernahDiputuskan.has(p.id)) return true
+
+    const level = STATUS_MENUNGGU[p.status]
+    if (level === undefined) return false
+
+    const total = hitungTotalPlafon(
+      p.anggota.map((a) => ({
+        plafonDiajukan: rupiahKeNumber(a.plafonDiajukan),
+        statusAnggota: a.statusAnggota,
+      })),
+    )
+    return urutanApprovalUntuk(total, ambang)[level - 1] === aktor.peran
+  })
+}
+
+/** Kondisi WHERE yang bisa dinyatakan langsung di query, per peran. */
+function whereUntukPeran(aktor: PenggunaToken): Record<string, unknown> {
+  if (aktor.peran === 'AO') return { dibuatOleh: aktor.id }
+  if (aktor.peran === 'ANL') return { status: { in: TAHAP_KERJA_ANL } }
+  if (aktor.peran === 'KCP' || aktor.peran === 'KC' || aktor.peran === 'KOM') {
+    return {
+      OR: [
+        { status: { in: Object.keys(STATUS_MENUNGGU) as StatusPengajuan[] } },
+        { keputusan: { some: { diputuskanOleh: aktor.id } } },
+      ],
+    }
+  }
+  // ADM mengawasi seluruh sistem (kelola pengguna & parameter) dan melihat semua.
+  return {}
+}
+
+/** Satu halaman daftar pengajuan. Dipakai `page` di SDD BAB 5. */
+export const UKURAN_HALAMAN = 50
+
+export type FilterDaftar = {
+  status?: string
+  /** Pencarian bebas: nomor referensi atau nama nasabah. NIK sengaja TIDAK dicari. */
+  q?: string
+  /** 1-berbasis. Nilai < 1 diperlakukan sebagai halaman pertama. */
+  page?: number
+}
+
+/** Daftar pengajuan, DIFILTER PERAN DI SERVER — bukan di frontend (FR-12). */
+export async function daftarPengajuan(aktor: PenggunaToken, filter: FilterDaftar = {}) {
+  const where: Record<string, unknown> = { ...whereUntukPeran(aktor) }
+  if (filter.status) where.status = filter.status
+
+  /**
+   * Pencarian SENGAJA tidak menyentuh kolom NIK.
+   *
+   * `q` datang dari query string, dan query string masuk ke access log server
+   * serta riwayat browser. Membolehkan pencarian NIK berarti mengundang NIK ke
+   * dua tempat itu — persis yang dilarang BR-11. Nomor referensi ada justru
+   * supaya pengajuan bisa dirujuk tanpa data pribadi.
+   */
+  const kata = (filter.q ?? '').trim()
+  if (kata.length > 0) {
+    where.AND = [
+      {
+        OR: [
+          { nomorReferensi: { contains: kata, mode: 'insensitive' } },
+          { anggota: { some: { nasabah: { nama: { contains: kata, mode: 'insensitive' } } } } },
+        ],
+      },
+    ]
+  }
+
+  const halaman = Math.max(1, Math.trunc(filter.page ?? 1))
 
   const baris = await prisma.pengajuan.findMany({
     where,
     include: { anggota: true },
     orderBy: { diubahPada: 'desc' },
-    take: 100,
+    skip: (halaman - 1) * UKURAN_HALAMAN,
+    take: UKURAN_HALAMAN,
   })
 
-  return baris.map((p) => ({
+  const terlihat = await saringUntukPeran(aktor, baris)
+
+  return terlihat.map((p) => ({
     id: p.id,
     nomorReferensi: p.nomorReferensi,
     jenisNasabah: p.jenisNasabah,
@@ -248,6 +453,72 @@ export async function daftarPengajuan(aktor: PenggunaToken, filterStatus?: strin
     ),
     diubahPada: p.diubahPada,
   }))
+}
+
+/** Urutan tahap yang ditampilkan dashboard, beserta status yang masuk ke dalamnya. */
+const TAHAP_PIPELINE: { kode: string; label: string; status: StatusPengajuan[] }[] = [
+  { kode: 'DRAF', label: 'Draf', status: ['DRAFT'] },
+  {
+    kode: 'VERIFIKASI',
+    label: 'Verifikasi dokumen',
+    status: ['SUBMITTED', 'VERIFIKASI_DOKUMEN', 'DOKUMEN_DITOLAK'],
+  },
+  { kode: 'SLIK', label: 'SLIK check', status: ['SLIK_OK', 'SLIK_GAGAL'] },
+  { kode: 'SKORING', label: 'Skoring & margin', status: ['SKORED'] },
+  {
+    kode: 'APPROVAL',
+    label: 'Menunggu approval',
+    status: ['MENUNGGU_APPROVAL_L1', 'MENUNGGU_APPROVAL_L2', 'MENUNGGU_APPROVAL_L3'],
+  },
+  { kode: 'DIKEMBALIKAN', label: 'Dikembalikan', status: ['DIKEMBALIKAN'] },
+  { kode: 'DISETUJUI', label: 'Disetujui', status: ['APPROVED'] },
+  {
+    kode: 'DITOLAK',
+    label: 'Ditolak',
+    status: ['REJECTED', 'REJECTED_SLIK', 'REJECTED_SCORING'],
+  },
+]
+
+/**
+ * Ringkasan pipeline (FR-12).
+ *
+ * Memakai cakupan peran yang SAMA dengan daftar pengajuan — satu fungsi, bukan
+ * dua. Kalau angkanya dihitung dengan aturan berbeda dari daftarnya, dashboard
+ * akan menampilkan "5 menunggu approval" di atas tabel yang berisi tiga baris,
+ * dan tidak ada yang tahu mana yang benar.
+ */
+export async function ringkasanPipeline(aktor: PenggunaToken) {
+  const baris = await prisma.pengajuan.findMany({
+    where: whereUntukPeran(aktor),
+    include: { anggota: true },
+    orderBy: { diubahPada: 'desc' },
+  })
+  const terlihat = await saringUntukPeran(aktor, baris)
+
+  const perStatus: Record<string, number> = {}
+  let totalPlafon = 0
+  for (const p of terlihat) {
+    perStatus[p.status] = (perStatus[p.status] ?? 0) + 1
+    totalPlafon += hitungTotalPlafon(
+      p.anggota.map((a) => ({
+        plafonDiajukan: rupiahKeNumber(a.plafonDiajukan),
+        statusAnggota: a.statusAnggota,
+      })),
+    )
+  }
+
+  return {
+    peran: aktor.peran,
+    total: terlihat.length,
+    totalPlafon,
+    perStatus,
+    tahap: TAHAP_PIPELINE.map((t) => ({
+      kode: t.kode,
+      label: t.label,
+      status: t.status,
+      jumlah: t.status.reduce((n, s) => n + (perStatus[s] ?? 0), 0),
+    })),
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -62,10 +62,14 @@ function pidDiPort(port) {
   const pids = new Set()
 
   if (WIN) {
-    const out = spawnSync('netstat', ['-ano', '-p', 'tcp'], { encoding: 'utf8' }).stdout ?? ''
+    // TANPA `-p tcp`: filter itu hanya menampilkan TCP IPv4. Vite mendengarkan di
+    // `[::]:3000`, jadi dengan filter tersebut ia tak terlihat — port tampak
+    // kosong padahal terpakai.
+    const out = spawnSync('netstat', ['-ano'], { encoding: 'utf8' }).stdout ?? ''
     for (const baris of out.split(/\r?\n/)) {
       const k = baris.trim().split(/\s+/)
       // TCP  0.0.0.0:8080  0.0.0.0:0  LISTENING  12345
+      // TCP  [::]:3000     [::]:0     LISTENING  12345
       if (k.length < 5 || k[0] !== 'TCP' || k[3] !== 'LISTENING') continue
       if (!k[1].endsWith(`:${port}`)) continue
       const pid = Number(k[4])
@@ -111,44 +115,101 @@ function bunuhPid(pid) {
   }
 }
 
-function portBebas(port) {
+/**
+ * Container Docker yang MEMPUBLIKASIKAN port ini.
+ *
+ * Wajib ada: di Windows, port yang dipublikasikan Docker Desktop TIDAK muncul
+ * sebagai listener di `netstat` (relay-nya hidup di sisi WSL). Tanpa cek ini,
+ * `docker compose up` yang lupa dimatikan membuat dev.mjs mengira port kosong,
+ * lalu backend mati dengan EADDRINUSE beberapa detik kemudian.
+ */
+function containerDiPort(port) {
+  // TANPA shell, sengaja: `docker` adalah .exe sungguhan (bisa di-spawn langsung),
+  // dan lewat cmd.exe tanda `|` di string format akan dibaca sebagai pipe.
+  const r = spawnSync('docker', ['ps', '--format', '{{.ID}}|{{.Names}}|{{.Ports}}'], {
+    encoding: 'utf8',
+  })
+  if (r.status !== 0 || !r.stdout) return [] // docker tidak terpasang / tidak jalan
+  const hasil = []
+  for (const baris of r.stdout.split(/\r?\n/)) {
+    const [id, nama, ports] = baris.split('|')
+    if (!id || !ports) continue
+    // "0.0.0.0:3000->80/tcp, [::]:3000->80/tcp"
+    if (ports.includes(`:${port}->`)) hasil.push({ id, nama: nama || id })
+  }
+  return hasil
+}
+
+function cobaBind(port, host) {
   return new Promise((res) => {
     const srv = net.createServer()
-    srv.once('error', () => res(false))
+    // Hanya EADDRINUSE yang berarti "terpakai". EAFNOSUPPORT/EADDRNOTAVAIL
+    // artinya keluarga alamat itu tidak ada di mesin ini — bukan bentrok.
+    srv.once('error', (e) => res(e.code !== 'EADDRINUSE'))
     srv.once('listening', () => srv.close(() => res(true)))
-    srv.listen(Number(port), '0.0.0.0')
+    srv.listen(Number(port), host)
   })
+}
+
+/**
+ * Port dianggap bebas hanya kalau IPv4 DAN IPv6 dua-duanya bisa di-bind.
+ * Vite (`host: true`) mendengarkan di `[::]`, sedangkan Fastify di `0.0.0.0`:
+ * memeriksa satu keluarga saja membuat separuh kasus bentrok lolos.
+ */
+async function portBebas(port) {
+  return (await cobaBind(port, '0.0.0.0')) && (await cobaBind(port, '::'))
 }
 
 const jeda = (ms) => new Promise((r) => setTimeout(r, ms))
 
-async function bebaskanPort(port, label) {
-  const pids = pidDiPort(port)
-  if (pids.length === 0) return
-  peringatan(`port ${port} (${label}) dipakai PID ${pids.join(', ')} — dibunuh.`)
-  for (const pid of pids) bunuhPid(pid)
+async function tungguBebas(port, batasMs) {
+  const mulai = Date.now()
+  do {
+    if (await portBebas(port)) return true
+    await jeda(200)
+  } while (Date.now() - mulai < batasMs)
+  return false
+}
 
-  // Windows melepas socket tidak seketika; tunggu sampai benar-benar bisa di-bind.
-  for (let i = 0; i < 20; i++) {
-    if (await portBebas(port)) return
-    await jeda(150)
+/** Mengosongkan satu port. Mengembalikan false kalau tetap tidak bisa dibebaskan. */
+async function bebaskanPort(port, label) {
+  if (await portBebas(port)) return true
+
+  const pids = pidDiPort(port)
+  if (pids.length > 0) {
+    peringatan(`port ${port} (${label}) dipakai PID ${pids.join(', ')} — dibunuh.`)
+    for (const pid of pids) bunuhPid(pid)
+    // Windows melepas socket tidak seketika; beri waktu sebentar.
+    if (await tungguBebas(port, 3000)) return true
   }
-  peringatan(`port ${port} masih terpakai setelah 3 detik. ${label} mungkin gagal start.`)
+
+  const containers = containerDiPort(port)
+  for (const c of containers) {
+    peringatan(`port ${port} (${label}) dipegang container docker "${c.nama}" — dihentikan.`)
+    spawnSync('docker', ['stop', c.id], { stdio: 'ignore' })
+  }
+  /**
+   * 45 detik, bukan 15.
+   *
+   * `docker stop` sendiri menunggu SIGTERM sampai 10 detik sebelum SIGKILL, dan
+   * SETELAH container mati, proxy port Docker Desktop di Windows masih perlu
+   * beberapa detik lagi untuk melepas bind-nya. Batas 15 detik membuat tiga
+   * container berturut-turut dilaporkan "tidak bisa dibebaskan" padahal semuanya
+   * berhenti dengan benar — pesan yang salah menuduh, dan menyuruh orang mencari
+   * proses yang tidak ada.
+   */
+  if (await tungguBebas(port, containers.length > 0 ? 45000 : 2000)) return true
+
+  galat(`port ${port} (${label}) tidak bisa dibebaskan.`)
+  return false
 }
 
 // ---------------------------------------------------------------------------
 // 2. Dependensi
 // ---------------------------------------------------------------------------
 
-const NPM = WIN ? 'npm.cmd' : 'npm'
-
-function jalankanSinkron(perintah, args, cwd) {
-  const r = spawnSync(perintah, args, {
-    cwd,
-    stdio: 'inherit',
-    // Node >=20 menolak spawn .cmd tanpa shell.
-    shell: WIN,
-  })
+function jalankanSinkron(perintah, cwd) {
+  const r = spawnSync(perintah, { cwd, stdio: 'inherit', shell: true })
   return r.status === 0
 }
 
@@ -157,14 +218,14 @@ function pastikanDependensi(ws) {
   const dir = join(ROOT, ws)
   if (!existsSync(join(dir, 'node_modules'))) {
     info(`node_modules ${ws} belum ada — menjalankan npm install (sekali saja).`)
-    if (!jalankanSinkron(NPM, ['install'], dir)) {
+    if (!jalankanSinkron('npm install', dir)) {
       galat(`npm install gagal di ${ws}.`)
       process.exit(1)
     }
   }
   if (ws === 'backend' && !existsSync(join(dir, 'node_modules', '.prisma', 'client'))) {
     info('Prisma Client belum di-generate — menjalankan prisma generate.')
-    if (!jalankanSinkron(NPM, ['exec', '--', 'prisma', 'generate'], dir)) {
+    if (!jalankanSinkron('npm exec -- prisma generate', dir)) {
       galat('prisma generate gagal.')
       process.exit(1)
     }
@@ -178,12 +239,15 @@ function pastikanDependensi(ws) {
 const anak = []
 let sedangMati = false
 
-function jalankanService({ nama, dir, warna, env }) {
-  const proc = spawn(NPM, ['run', 'dev'], {
+function jalankanService({ nama, dir, warna, env, argsTambahan = '' }) {
+  // Perintah sebagai SATU string dengan shell: true. Dua alasan: `npm.cmd` tidak
+  // bisa di-spawn tanpa shell sejak Node 20, dan bentuk (perintah, args[], shell)
+  // memicu DeprecationWarning DEP0190 di setiap start.
+  const proc = spawn(`npm run dev${argsTambahan ? ` -- ${argsTambahan}` : ''}`, {
     cwd: join(ROOT, dir),
     env: { ...process.env, ...env, FORCE_COLOR: '1' },
     stdio: ['ignore', 'pipe', 'pipe'],
-    shell: WIN,
+    shell: true,
   })
 
   const label = `${warna}${nama.padEnd(9)}${C.reset} ${C.abu}|${C.reset} `
@@ -242,39 +306,41 @@ async function tungguSiap(url, batasMs) {
 // main
 // ---------------------------------------------------------------------------
 
-const berkasEnv = siapkanEnv()
-const PORT_BACKEND = berkasEnv.BACKEND_PORT || '8080'
-const PORT_FRONTEND = berkasEnv.FRONTEND_PORT || '3000'
-const PORT_SLIK = berkasEnv.MOCK_SLIK_PORT || '9090'
-
-info(`membebaskan port ${PORT_SLIK}, ${PORT_BACKEND}, ${PORT_FRONTEND} ...`)
-await bebaskanPort(PORT_SLIK, 'mock-slik')
-await bebaskanPort(PORT_BACKEND, 'backend')
-await bebaskanPort(PORT_FRONTEND, 'frontend')
-
-if (HANYA_BUNUH_PORT) {
-  info('selesai (--kill-only).')
-  process.exit(0)
+let berkasEnv
+try {
+  berkasEnv = muatEnvRoot({
+    onSalin: () =>
+      peringatan('.env belum ada — disalin dari .env.example. Periksa DATABASE_URL & JWT_SECRET.'),
+  })
+} catch (err) {
+  galat(err instanceof Error ? err.message : String(err))
+  process.exit(1)
 }
 
-// Terjemahan nama host docker -> localhost. Hanya di memori proses ini.
-const slikBase = (berkasEnv.SLIK_BASE_URL ?? '').includes('mock-slik')
-  ? `http://localhost:${PORT_SLIK}`
-  : berkasEnv.SLIK_BASE_URL || `http://localhost:${PORT_SLIK}`
+const turunan = turunkanEnv(berkasEnv)
+const PORT_BACKEND = turunan.portBackend
+const PORT_FRONTEND = turunan.portFrontend
+const PORT_SLIK = turunan.portSlik
 
-const dbUrl = (berkasEnv.DATABASE_URL ?? '').replace(
-  /@db:\d+/,
-  `@localhost:${berkasEnv.DB_PORT || '5432'}`,
-)
+info(`membebaskan port ${PORT_SLIK}, ${PORT_BACKEND}, ${PORT_FRONTEND} ...`)
+const semuaBebas = [
+  await bebaskanPort(PORT_SLIK, 'mock-slik'),
+  await bebaskanPort(PORT_BACKEND, 'backend'),
+  await bebaskanPort(PORT_FRONTEND, 'frontend'),
+].every(Boolean)
 
-const asalCors = new Set(
-  (berkasEnv.CORS_ALLOWED_ORIGINS ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean),
-)
-asalCors.add(`http://localhost:${PORT_FRONTEND}`)
-asalCors.add(`http://127.0.0.1:${PORT_FRONTEND}`)
+if (HANYA_BUNUH_PORT) {
+  info(semuaBebas ? 'selesai (--kill-only).' : 'selesai dengan port yang masih terpakai.')
+  process.exit(semuaBebas ? 0 : 1)
+}
+
+// Berhenti di sini, bukan lanjut. `tsx watch` TIDAK mati saat aplikasinya kena
+// EADDRINUSE — ia tetap hidup dan menunggu perubahan berkas, jadi service yang
+// gagal bind akan tampak "jalan" padahal mati. Lebih baik satu pesan jelas.
+if (!semuaBebas) {
+  galat('Ada port yang masih dipakai proses lain. Tutup proses itu lalu ulangi.')
+  process.exit(1)
+}
 
 pastikanDependensi('mock-slik')
 pastikanDependensi('backend')
@@ -290,7 +356,7 @@ jalankanService({
   env: {
     ...berkasEnv,
     PORT: PORT_SLIK,
-    FIXTURES_PATH: join(ROOT, 'fixtures', 'nasabah-uji.csv'),
+    FIXTURES_PATH: turunan.fixturesPath,
   },
 })
 
@@ -301,9 +367,9 @@ jalankanService({
   env: {
     ...berkasEnv,
     PORT: PORT_BACKEND,
-    DATABASE_URL: dbUrl,
-    SLIK_BASE_URL: slikBase,
-    CORS_ALLOWED_ORIGINS: [...asalCors].join(','),
+    DATABASE_URL: turunan.databaseUrl,
+    SLIK_BASE_URL: turunan.slikBaseUrl,
+    CORS_ALLOWED_ORIGINS: turunan.corsAllowedOrigins,
   },
 })
 
@@ -311,6 +377,10 @@ jalankanService({
   nama: 'frontend',
   dir: 'frontend',
   warna: C.hijau,
+  // --strictPort: tanpa ini Vite diam-diam pindah ke 3001 kalau 3000 terpakai,
+  // dan alamat itu tidak ada di CORS_ALLOWED_ORIGINS backend — gejalanya jadi
+  // "login gagal tanpa pesan", bukan "port bentrok".
+  argsTambahan: `--strictPort --port ${PORT_FRONTEND}`,
   env: {
     ...berkasEnv,
     PORT: PORT_FRONTEND,
@@ -334,6 +404,6 @@ if (backendSiap && !sedangMati) {
   console.log(`${C.hijau}${C.tebal}  iMitra siap${C.reset}`)
   console.log(`    Frontend    ${C.tebal}http://localhost:${PORT_FRONTEND}${C.reset}`)
   console.log(`    Backend     http://localhost:${PORT_BACKEND}/health`)
-  console.log(`    Mock SLIK   ${slikBase}/health`)
+  console.log(`    Mock SLIK   ${turunan.slikBaseUrl}/health`)
   console.log('')
 }

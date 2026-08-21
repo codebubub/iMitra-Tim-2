@@ -208,8 +208,21 @@ export function Skoring() {
     enabled: !!pengajuanId,
   })
 
+  /**
+   * Catatan analis (FR-05, Tabel 4.2).
+   *
+   * SLIK kolektibilitas 2 boleh lanjut, tetapi keputusannya wajib punya alasan
+   * tertulis. Layar TIDAK memutuskan sendiri kapan catatan itu wajib — ia
+   * mengirimkannya apa adanya, dan server yang menolak bila kurang. Menyalin
+   * aturannya ke sini berarti ada dua tempat yang bisa berbeda.
+   */
+  const [catatanAnalis, setCatatanAnalis] = useState('')
+
   const hitung = useMutation<HasilSkoring, GalatApi, void>({
-    mutationFn: () => jalankanSkoring(pengajuanId),
+    mutationFn: () =>
+      jalankanSkoring(pengajuanId, {
+        catatanAnalis: catatanAnalis.trim() === '' ? undefined : catatanAnalis.trim(),
+      }),
     onSuccess: () => {
       setGalat(null)
       qc.invalidateQueries({ queryKey: ['skoring', pengajuanId] })
@@ -270,6 +283,25 @@ export function Skoring() {
       </div>
 
       <PanelGalat galat={galat} />
+
+      <div className="kartu" style={{ padding: 'var(--sp-4)', marginTop: 'var(--sp-4)' }}>
+        <label htmlFor="catatan-analis" style={{ fontWeight: 600 }}>
+          Catatan analis
+        </label>
+        <p className="redup" style={{ margin: 'var(--sp-2) 0' }}>
+          Wajib diisi, minimal 10 karakter, bila ada anggota berkolektibilitas 2. SLIK kol-2
+          boleh lanjut, tetapi grade finalnya dilantai di 3 dan keputusannya harus punya
+          alasan tertulis (Tabel 4.2). Server yang menegakkan aturan ini.
+        </p>
+        <textarea
+          id="catatan-analis"
+          rows={3}
+          style={{ width: '100%' }}
+          value={catatanAnalis}
+          onChange={(e) => setCatatanAnalis(e.target.value)}
+          placeholder="Mis. tunggakan 45 hari pada fasilitas lain, sudah dilunasi Juli 2026."
+        />
+      </div>
 
       {/*
        * VARIAN TERBLOKIR (BR-03). Ditampilkan saat server menolak skoring karena

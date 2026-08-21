@@ -8,10 +8,12 @@ import {
   buatPengajuan,
   daftarPengajuan,
   ringkasanPengajuan,
+  ringkasanPipeline,
   submitPengajuan,
   tambahAnggota,
   tolakAnggota,
   ubahAnggota,
+  ubahPengajuan,
 } from '../services/pengajuan.service.js'
 import { cariAudit, riwayatPengajuan } from '../services/audit.service.js'
 import {
@@ -24,6 +26,7 @@ import { daftarkanRouteDokumen } from './dokumen.js'
 import { daftarkanRouteSurvei } from './survei.js'
 import { daftarkanRouteApproval } from './approval.js'
 import { slikRoutes } from './slik.js'
+import { marginRoutes } from './margin.js'
 import { skoringRoutes } from './skoring.js'
 import { parameterRoutes } from './parameter.js'
 import { TidakTerautentikasi } from '../lib/errors.js'
@@ -142,6 +145,16 @@ const skemaUbahAnggota = z.object({
   plafonDiajukan: z.number().int().positive(),
 })
 
+/**
+ * Yang boleh diubah pada pengajuan DRAFT/DIKEMBALIKAN. Sengaja sempit: plafon
+ * anggota punya endpointnya sendiri, dan identitas nasabah tidak diubah lewat
+ * sini karena barisnya dipakai pengajuan lain.
+ */
+const skemaUbahPengajuan = z.object({
+  akad: z.enum(['MURABAHAH', 'MUSYARAKAH']).optional(),
+  tenorBulan: z.number().int().optional(),
+})
+
 export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
   // --- Kesehatan & diagnostik ---------------------------------------------
 
@@ -194,8 +207,12 @@ export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
     '/api/pengajuan',
     { config: { peran: SEMUA_PERAN } },
     async (req) => {
-      const q = req.query as { status?: string }
-      return daftarPengajuan(req.pengguna!, q.status)
+      const kueri = req.query as { status?: string; q?: string; page?: string }
+      return daftarPengajuan(req.pengguna!, {
+        status: kueri.status,
+        q: kueri.q,
+        page: kueri.page ? Number(kueri.page) : undefined,
+      })
     },
   )
 
@@ -208,9 +225,27 @@ export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
     },
   )
 
+  /**
+   * PATCH — ubah data selama masih DRAFT atau DIKEMBALIKAN (FR-02).
+   *
+   * Ada di kontrak SDD BAB 5 sejak awal, tetapi belum pernah terdaftar. Tanpa
+   * endpoint ini, pengajuan yang dikembalikan approver tidak dapat diperbaiki
+   * AO, dan alur DIKEMBALIKAN → SUBMITTED pada SRS 3.2 buntu.
+   */
+  app.patch('/api/pengajuan/:id', { config: { peran: ['AO'] } }, async (req) => {
+    const { id } = req.params as { id: string }
+    const masukan = skemaUbahPengajuan.parse(req.body)
+    return ubahPengajuan(req.pengguna!, id, masukan)
+  })
+
   app.post('/api/pengajuan/:id/submit', { config: { peran: ['AO'] } }, async (req) => {
     const { id } = req.params as { id: string }
     return submitPengajuan(req.pengguna!, id)
+  })
+
+  // FR-12 — jumlah per tahap, dengan cakupan peran yang sama seperti daftar.
+  app.get('/api/dashboard/pipeline', { config: { peran: SEMUA_PERAN } }, async (req) => {
+    return ringkasanPipeline(req.pengguna!)
   })
 
   // --- Anggota majelis (FR-10, AC-14) -------------------------------------
@@ -330,5 +365,6 @@ export async function daftarkanRoute(app: FastifyInstance): Promise<void> {
 
   await slikRoutes(app)
   await skoringRoutes(app)
+  await marginRoutes(app)
   await parameterRoutes(app)
 }

@@ -79,9 +79,23 @@ export function ambilHasilSkoring(pengajuanId: string): Promise<HasilSkoring | n
 /**
  * POST /api/pengajuan/{id}/skoring — jalankan skoring.
  * BR-03 diperiksa di server; pelanggaran datang sebagai 422 dengan rule BR-03.
+ *
+ * `catatanAnalis` WAJIB bila ada anggota berkolektibilitas 2 (Tabel 4.2): SLIK
+ * kol-2 boleh lanjut, tetapi keputusannya harus punya alasan tertulis. Server
+ * yang menegakkannya — layar hanya menampilkan bidangnya lebih awal supaya ANL
+ * tidak menabrak 422 tanpa tahu sebabnya.
  */
-export function jalankanSkoring(pengajuanId: string): Promise<HasilSkoring> {
-  return api<HasilSkoring>(`/api/pengajuan/${pengajuanId}/skoring`, { method: 'POST' })
+export function jalankanSkoring(
+  pengajuanId: string,
+  input?: { catatanAnalis?: string },
+): Promise<HasilSkoring> {
+  // Tanpa catatan, permintaan dikirim TANPA body — seluruh masukan skoring
+  // memang berasal dari data yang sudah tersimpan, dan pengajuanId ada di path.
+  const catatan = input?.catatanAnalis?.trim()
+  return api<HasilSkoring>(`/api/pengajuan/${pengajuanId}/skoring`, {
+    method: 'POST',
+    ...(catatan ? { body: JSON.stringify({ catatanAnalis: catatan }) } : {}),
+  })
 }
 
 /**

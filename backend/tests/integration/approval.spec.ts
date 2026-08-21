@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { FastifyInstance } from 'fastify'
 import { buatApp } from '../../src/app.js'
 import { prisma } from '../../src/lib/prisma.js'
+import { nomorReferensiUji } from './bantuan.js'
 
 /**
  * AC-10 — approval berurutan: Rp 120.000.000 butuh KCP lalu KC; KC tidak dapat
@@ -49,7 +50,9 @@ describe('AC-10 / AC-11 — approval berjenjang', () => {
       create: { nik, nama: 'Uji Approval', alamat: 'Jl. Uji', jenisUsaha: 'Warung' },
       update: {},
     })
-    const nomor = `IMT-99999999-${Math.floor(1000 + Math.random() * 8999)}`
+    // Memakai generator bersama: salinan inline sebelumnya hanya punya 8.999
+    // nilai dan bertabrakan dengan baris uji yang menumpuk di schema test.
+    const nomor = nomorReferensiUji()
     const pengajuan = await prisma.pengajuan.create({
       data: {
         nomorReferensi: nomor,

@@ -71,6 +71,31 @@ tim mengubah dua baris di `.env` masing-masing untuk memakai PostgreSQL bersama 
 tanpa mengubah perintahnya. Rinciannya — termasuk pembagian schema per orang dan anggaran
 koneksi — ada di [`docs/DATABASE.md`](docs/DATABASE.md).
 
+**Tanpa Docker — juga satu perintah.** Untuk pengembangan sehari-hari (hot reload, tanpa
+menunggu build image), dari root repo:
+
+```bash
+npm run dev      # atau: npm start — keduanya sama
+```
+
+Perintah itu menghidupkan mock-slik, backend, dan frontend sekaligus dengan log berlabel
+per service, dan Ctrl+C sekali mematikan ketiganya. Sebelum start, port `9090`, `8080`,
+dan `3000` **dibebaskan paksa**: proses host yang menempel dibunuh, dan container Docker
+yang sedang mempublikasikan port itu dihentikan — jadi `docker compose up` yang lupa
+dimatikan tidak lagi menyebabkan `EADDRINUSE` yang membingungkan. Nomor portnya diambil
+dari `.env`, sama seperti mode Docker.
+
+Yang perlu diketahui tentang mode ini:
+
+- Ia membaca `.env` root dan menyuntikkannya sendiri ke tiap proses (backend sengaja tidak
+  memakai dotenv — di container, variabelnya datang dari compose).
+- Nama host Docker diterjemahkan ke localhost **di memori saja**: `mock-slik` → `localhost`,
+  `@db:5432` → `@localhost:5432`. `.env` tidak pernah ditulis ulang, jadi
+  `docker compose up` tetap bekerja dengan berkas yang sama.
+- Database tidak ikut dihidupkan. Mode ini memakai `DATABASE_URL` apa adanya — Aiven, atau
+  container `db` yang Anda jalankan sendiri (`docker compose up db`).
+- `npm run ports:kill` membebaskan ketiga port tanpa menjalankan apa pun.
+
 **Runbook lengkap** — menjalankan tanpa Docker, sembilan pemeriksaan untuk membuktikan
 sistemnya benar-benar jalan, dan daftar gejala yang pernah kami temui beserta
 perbaikannya — ada di [`docs/SETUP.md`](docs/SETUP.md).
@@ -100,10 +125,15 @@ Keduanya berjalan **otomatis** saat `docker compose up`. Perintah di bawah hanya
 diperlukan kalau Anda menjalankan backend langsung di host.
 
 ```bash
-# Migrasi (dari direktori backend/)
-npx prisma migrate deploy
+# Dari ROOT repo — .env root ikut dimuat (Prisma CLI hanya membaca backend/.env,
+# jadi menjalankan langsung dari backend/ akan gagal tanpa DATABASE_URL)
+npm run db:migrate     # prisma migrate deploy
+npm run db:seed        # idempoten, aman dijalankan berulang
+npm run db:seed:demo   # data demo
+npm run db:reset       # migrate reset --force lalu seed ulang
 
-# Seed — idempoten, aman dijalankan berulang
+# Setara, dari direktori backend/, dengan DATABASE_URL sudah ada di lingkungan
+npx prisma migrate deploy
 npm run seed
 
 # Reset demo ke kondisi awal (menghapus volume database dan berkas upload)
@@ -319,6 +349,7 @@ Tim ini memakai AI sebagai alat rekayasa. Jejaknya ada di tiga tempat:
 | [`docs/DATABASE.md`](docs/DATABASE.md) | PostgreSQL bersama tim: schema per orang, anggaran koneksi, alur migrasi |
 | [`docs/PEMBAGIAN-TIM.md`](docs/PEMBAGIAN-TIM.md) | Peran, kepemilikan modul, rencana per gate, risiko |
 | [`docs/UIUX-STITCH.md`](docs/UIUX-STITCH.md) | Design system + 14 prompt Google Stitch per layar |
+| [`docs/TESTING.md`](docs/TESTING.md) | **Dokumentasi pengujian**: akun uji, data uji, matriks otorisasi, alur uji, skenario fungsional & jalur error, inventaris test otomatis, celah pengujian |
 | [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md) | FR → AC → endpoint → test → PR |
 | [`docs/DEMO-SCRIPT.md`](docs/DEMO-SCRIPT.md) | Skrip demo AC-01 s.d. AC-15 beserta data uji |
 | [`docs/adr/`](docs/adr/) | Architecture Decision Records (minimal 3) |

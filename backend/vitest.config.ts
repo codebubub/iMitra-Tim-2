@@ -9,6 +9,10 @@ export default defineConfig({
     globals: false,
     testTimeout: 15000,
 
+    // Mengarahkan DATABASE_URL ke schema test sebelum aplikasi di-import.
+    // Lihat alasan lengkapnya di berkasnya.
+    setupFiles: ['tests/setup-env.ts'],
+
     /**
      * Satu berkas test pada satu waktu, TIDAK paralel.
      *
