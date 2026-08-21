@@ -822,23 +822,25 @@ Enam job; job gerbang bernama **`CI`** adalah required status check untuk `main`
 
 | AC | Ringkas | Test otomatis | Skenario manual | Status |
 |---|---|---|---|---|
-| **AC-01** | AO buat pengajuan Rp 30 jt, nomor `IMT-YYYYMMDD-NNNN` | `unit/margin-plafon.spec.ts` (pola nomor, zona waktu, BR-12) | TC-PGJ-01, F-01 langkah 2 | |
-| **AC-02** | AO ke endpoint verifikasi dokumen → **403** | `integration/dokumen.spec.ts`, `integration/rbac.spec.ts` | TC-AUTH-06 + curl langsung | |
-| **AC-03** | Tolak KTP dengan kode alasan; unggah ulang hanya KTP; data lain utuh | `integration/dokumen.spec.ts`, `unit/dokumen.spec.ts` | TC-DOK-06, TC-DOK-07, E-4 | |
-| **AC-04** | Tanpa survei valid → 422 menyebut `BR-03` | `integration/skoring-prasyarat.spec.ts`, `unit/prasyarat-skoring.spec.ts` | TC-SKR-01 | |
-| **AC-05** | Kol-4 → `REJECTED_SLIK` otomatis | ⚠️ belum ada test integrasi khusus (G-1) | TC-SLIK-03, F-02 | |
-| **AC-06** | Kol-2 → grade tidak pernah lebih baik dari 3 | `unit/skoring.spec.ts` (lantai kol-2) | TC-SKR-08, F-03, data `9005` | |
-| **AC-07** | Rincian keempat komponen ditampilkan & disimpan | `unit/skoring.spec.ts` (4 rincian) — belum ada integrasi (G-4) | TC-SKR-05, layar Skoring | |
-| **AC-08** | Override grade: alasan wajib, tercatat di audit | `unit/skoring.spec.ts` (validasi alasan) — belum ada integrasi (G-4) | TC-SKR-11/12/13, E-9 | |
-| **AC-09** | Margin 10,0 % untuk grade 1 diblokir | `unit/margin-plafon.spec.ts` — belum ada integrasi (G-3) | TC-MRG-01 … TC-MRG-07, E-6 | |
-| **AC-10** | 30 jt → KCP; 120 jt → KCP lalu KC; KC tidak bisa mendahului | `unit/approval.spec.ts`, `integration/approval.spec.ts` | TC-APR-01/02/03, F-04 | |
-| **AC-11** | Pembuat tidak bisa menyetujui pengajuannya sendiri | `integration/approval.spec.ts` (`kcp2`) | TC-APR-07, F-06, E-5 | |
-| **AC-12** | Audit lengkap `DRAFT`→`APPROVED`, urut waktu, ada aktor | `integration/audit.spec.ts` + data `9001` | TC-AUD-01 | |
-| **AC-13** | Tidak ada endpoint yang mengubah/menghapus audit | `integration/audit-readonly.spec.ts`, `integration/rbac.spec.ts` | TC-AUD-03/04/05 | |
-| **AC-14** | Kelompok 240 jt → 3 level; tolak 60 jt → 180 jt → 2 level | `integration/kelompok.spec.ts`, `unit/approval.spec.ts` | TC-KLP-03/04, F-05 | |
-| **AC-15** | ADM ubah bobot 20 → 25; skoring berikutnya memakai nilai baru tanpa restart | ⚠️ belum ada test integrasi khusus (G-2) | TC-PRM-02, F-08 | |
+| **AC-01** | AO buat pengajuan Rp 30 jt, nomor `IMT-YYYYMMDD-NNNN` | `integration/pengajuan.spec.ts` + `unit/margin-plafon.spec.ts` | TC-PGJ-01, F-01 langkah 2 | ✅ lolos |
+| **AC-02** | AO ke endpoint verifikasi dokumen → **403** | `integration/dokumen.spec.ts`, `rbac.spec.ts`, + kasus 403 di `slik`/`skoring`/`margin`/`override`/`parameter-live` | TC-AUTH-06 + curl langsung | ✅ lolos |
+| **AC-03** | Tolak KTP dengan kode alasan; unggah ulang hanya KTP; data lain utuh | `integration/dokumen.spec.ts`, `unit/dokumen.spec.ts` | TC-DOK-06, TC-DOK-07, E-4 | ✅ lolos |
+| **AC-04** | Tanpa survei valid → 422 menyebut `BR-03` | `integration/skoring-prasyarat.spec.ts`, `integration/skoring.spec.ts` (tiap prasyarat terpisah), `unit/prasyarat-skoring.spec.ts` | TC-SKR-01 … TC-SKR-03 | ✅ lolos |
+| **AC-05** | Kol-4 → `REJECTED_SLIK` otomatis | `integration/slik.spec.ts` | TC-SLIK-03, F-02 | ✅ lolos |
+| **AC-06** | Kol-2 → grade tidak pernah lebih baik dari 3 | `unit/skoring.spec.ts` + `integration/slik.spec.ts`, `skoring.spec.ts`, `override.spec.ts` | TC-SKR-08, F-03, data `9005` | ✅ lolos |
+| **AC-07** | Rincian keempat komponen ditampilkan & disimpan | `unit/skoring.spec.ts` + `integration/skoring.spec.ts` (rincian terbaca kembali sebagai angka) | TC-SKR-05, layar Skoring | ✅ lolos |
+| **AC-08** | Override grade: alasan wajib, tercatat di audit | `unit/skoring.spec.ts` + `integration/override.spec.ts` | TC-SKR-11/12/13, E-9 | ✅ lolos |
+| **AC-09** | Margin 10,0 % untuk grade 1 diblokir | `unit/margin-plafon.spec.ts`, `unit/margin.spec.ts` + `integration/margin.spec.ts` (**mengubah baris `rentang_margin` lebih dulu**) | TC-MRG-01 … TC-MRG-07, E-6 | ✅ lolos |
+| **AC-10** | 30 jt → KCP; 120 jt → KCP lalu KC; KC tidak bisa mendahului | `unit/approval.spec.ts`, `integration/approval.spec.ts` | TC-APR-01/02/03, F-04 | ✅ lolos |
+| **AC-11** | Pembuat tidak bisa menyetujui pengajuannya sendiri | `integration/approval.spec.ts` (`kcp2`) | TC-APR-07, F-06, E-5 | ✅ lolos |
+| **AC-12** | Audit lengkap `DRAFT`→`APPROVED`, urut waktu, ada aktor | `integration/audit.spec.ts` + data `9001` | TC-AUD-01 | ✅ lolos |
+| **AC-13** | Tidak ada endpoint yang mengubah/menghapus audit | `integration/audit-readonly.spec.ts`, `integration/rbac.spec.ts` | TC-AUD-03/04/05 | ✅ lolos |
+| **AC-14** | Kelompok 240 jt → 3 level; tolak 60 jt → 180 jt → 2 level | `integration/kelompok.spec.ts`, `unit/approval.spec.ts` | TC-KLP-03/04, F-05 | ✅ lolos |
+| **AC-15** | ADM ubah bobot 20 → 25; skoring berikutnya memakai nilai baru tanpa restart | `integration/parameter-live.spec.ts` | TC-PRM-02, F-08 | ✅ lolos |
 
-Kolom **Status** diisi saat sesi pengujian: `LULUS` / `GAGAL` / `TERBLOKIR` beserta tanggal.
+Kolom **Status** merujuk pada test otomatis, dijalankan **2026-08-21**: seluruh 15 AC punya
+test otomatis dan seluruhnya lolos. Skenario manual di kolom sebelahnya tetap perlu
+ditelusuri sekali sebelum demo — test otomatis tidak melihat layar.
 
 ---
 
@@ -847,24 +849,34 @@ Kolom **Status** diisi saat sesi pengujian: `LULUS` / `GAGAL` / `TERBLOKIR` bese
 Bagian ini sengaja eksplisit. Celah yang tidak tertulis akan ditemukan orang lain pada waktu
 yang paling mahal.
 
+### 12.1 Sudah tertutup sejak versi pertama dokumen ini
+
+Keenam celah di bawah ditandai pada 2026-08-21 pagi dan **sudah ditutup** pada sore yang
+sama. Dicatat di sini, bukan dihapus, supaya terlihat apa yang berubah dan oleh test mana.
+
+| # | Celah semula | Ditutup oleh |
+|---|---|---|
+| ~~G-1~~ | AC-05 tanpa test integrasi | `integration/slik.spec.ts` — 10 test: kol-4 → `REJECTED_SLIK`, kol-2 lanjut, 404/503 tanpa menebak kolektibilitas, SLIK diulang, BR-11 |
+| ~~G-2~~ | AC-15 tanpa test integrasi | `integration/parameter-live.spec.ts` — 5 test: bobot 20 → 25 langsung dipakai skoring berikutnya |
+| ~~G-3~~ | AC-09 tanpa test yang mengubah `rentang_margin` lebih dulu | `integration/margin.spec.ts` — 9 test, termasuk "mengubah baris `rentang_margin` langsung mengubah hasilnya, tanpa restart" |
+| ~~G-4~~ | AC-07/AC-08 tanpa test integrasi | `integration/skoring.spec.ts` (8) + `integration/override.spec.ts` (5) |
+| ~~G-5~~ | AC-01 tanpa test integrasi | `integration/pengajuan.spec.ts` — 8 test, termasuk BR-12 nomor tidak pernah dipakai ulang |
+| ~~G-7~~ | BR-04 masa berlaku SLIK 30 hari belum diuji | `integration/skoring.spec.ts` — "hasil SLIK lebih tua dari masa berlaku ditolak dengan menyebut BR-04" |
+
+### 12.2 Masih terbuka
+
 | # | Celah | Dampak | Yang menutupinya sekarang | Usulan |
 |---|---|---|---|---|
-| G-1 | **AC-05 tanpa test integrasi.** SRS menyebut `integration/slik.spec.ts`; berkas itu belum ada. Yang ada hanya `slik-serialisasi.spec.ts` (bentuk respons) dan `unit/slik-client.spec.ts` (1 test, jalur sukses) | Penolakan otomatis kol-3/4/5 hanya terbukti manual | TC-SLIK-03 s.d. TC-SLIK-05 | Tambah `integration/slik.spec.ts`: kol-4 → `REJECTED_SLIK`, kol-2 → lanjut + lantai, 404 → `SLIK_GAGAL`, 503 → 502 |
-| G-2 | **AC-15 tanpa test integrasi.** SRS menyebut `integration/parameter-live.spec.ts`; belum ada | Klaim "tanpa restart" hanya terbukti manual | TC-PRM-02 | Tambah test: skoring → `PUT` parameter → skoring lagi **dalam satu proses**, pastikan hasil berbeda |
-| G-3 | **AC-09 tanpa test integrasi yang mengubah `rentang_margin` lebih dulu** | Tidak terbukti bahwa rentang benar-benar dibaca dari database di jalur nyata | TC-MRG-07 | Tambah `integration/margin.spec.ts` yang menulis baris `rentang_margin` lalu memanggil endpoint |
-| G-4 | **AC-07/AC-08 tanpa test integrasi.** Empat baris rincian & pencatatan override hanya diuji di domain | Penyimpanan rincian dan baris audit override belum terbukti di jalur nyata | TC-SKR-05, TC-SKR-13 | Tambah `integration/skoring.spec.ts` dan `integration/override.spec.ts` |
-| G-5 | **AC-01 tanpa test integrasi.** SRS menyebut `integration/pengajuan.spec.ts`; belum ada | Pembangkitan nomor referensi di jalur nyata (baris terkunci `urutan_referensi`) belum diuji end-to-end | TC-PGJ-01, TC-PGJ-06 | Tambah test: dua pengajuan berurutan, pastikan nomor naik dan tidak dipakai ulang |
-| G-6 | **BR-11 tanpa test redaksi log.** SRS menyebut `redaksi.spec.ts`; belum ada. Yang ada: `audit.spec.ts` memastikan NIK tidak muncul di **respons audit** | NIK bisa bocor ke log tanpa terdeteksi otomatis | TC-NFR-02 (grep log manual) | Tambah test yang mengarahkan logger ke buffer selama alur AC-01…AC-05 lalu memastikan tidak ada NIK fixtures |
-| G-7 | **BR-04 (masa berlaku SLIK 30 hari) belum punya test** | Hasil SLIK kedaluwarsa mungkin lolos ke skoring | TC-SLIK-10 (manual, sulit dipicu) | Tambah unit test domain dengan tanggal disuntik sebagai argumen |
-| G-8 | **Tidak ada test render komponen frontend.** Yang ada hanya lapisan `api/` | Regresi UI tidak terdeteksi CI | Manual bagian 6–7 | Tambah test render untuk layar Skoring (rincian 4 komponen) dan Margin (badge BR-06) |
-| G-9 | **Tidak ada test E2E browser** (Playwright/Cypress) | Alur lintas layar hanya diuji manusia | F-01 s.d. F-08 | Opsional; prioritas di bawah G-1…G-4 |
-| G-10 | **`unit/prasyarat-skoring.spec.ts` dan `unit/slik-client.spec.ts` masing-masing hanya 1 test** | Cakupan tipis pada dua area berisiko tinggi | — | Perluas ke cabang kegagalan: 404, 503, timeout, prasyarat kurang satu per satu |
+| G-6 | **BR-11 belum punya test redaksi log.** SRS menyebut `redaksi.spec.ts`; belum ada. Yang sudah diuji: NIK tidak muncul di **respons** dan **audit trail** (`audit.spec.ts`, `slik.spec.ts`, `pengajuan.spec.ts`) | NIK bisa bocor ke log aplikasi tanpa terdeteksi otomatis — jalur yang justru paling sering luput | TC-NFR-02 (grep `docker compose logs` manual) | Arahkan logger ke buffer selama alur AC-01…AC-05, lalu pastikan tidak ada NIK fixtures yang muncul |
+| G-8 | **Tidak ada test render komponen frontend.** Yang ada hanya lapisan `api/` (71 test) | Regresi UI tidak terdeteksi CI; layar bisa rusak sementara seluruh test hijau | Manual bagian 6–7 | Test render untuk layar Skoring (tabel 4 komponen) dan Margin (badge `BR-06` + tombol nonaktif) |
+| G-9 | **Tidak ada test E2E browser** (Playwright/Cypress) | Alur lintas layar hanya diuji manusia | F-01 s.d. F-08 | Opsional; prioritas di bawah G-6 dan G-8 |
+| G-10 | **`unit/prasyarat-skoring.spec.ts` dan `unit/slik-client.spec.ts` masing-masing hanya 1 test** | Cakupan tipis di lapisan domain/klien — walau cabangnya kini tertutup di lapisan integrasi | `integration/slik.spec.ts`, `integration/skoring.spec.ts` | Perluas ke cabang kegagalan klien (404, 503, timeout) sebagai unit test, supaya tidak perlu database untuk mendeteksinya |
+| G-11 | **Test integrasi menulis ke database bersama (Aiven), bukan ke database sekali pakai.** Baris uji menumpuk karena trigger append-only membuat pengajuan berjejak audit tidak bisa dihapus | Suite melambat (~4 menit) dan pernah menghasilkan tabrakan `nomor_referensi` yang menyamar sebagai bug produk | `setup-env.ts` mengisolasi ke schema `test_<nama>`; generator nomor referensi sudah diperbaiki | Sediakan perintah pembersih schema test (`prisma migrate reset` pada schema itu saja) dan jalankan berkala |
 
-> **Catatan tentang `docs/TRACEABILITY.md`**: berkas itu bertanggal 2026-08-20 dan menyatakan
-> FR-05/06/07/13 masih stub `501`. Pada kode saat ini keempatnya **sudah terimplementasi**
-> (`routes/margin.ts` terdaftar; `override-skoring.service.ts` dan `parameter-tulis.service.ts`
-> menyimpan sungguhan, bukan mengembalikan echo). Perbarui berkas itu; jangan memakainya
-> sebagai dasar pengujian.
+> **Hubungan dengan `docs/TRACEABILITY.md`**: berkas itu memetakan **apa menutup apa**
+> (FR → AC → endpoint → test → BR); dokumen ini menjelaskan **bagaimana mengujinya**.
+> Keduanya diselaraskan pada 2026-08-21 terhadap `main` `93b8fa1`. Kalau salah satu berubah,
+> periksa yang lain — celah G-6 s.d. G-11 di sini muncul juga sebagai Prioritas 2 di sana.
 
 ---
 
@@ -971,9 +983,14 @@ Dugaan lokasi : <berkas:baris kalau sudah diketahui>
    contoh yang baik dari repo ini: `"margin 10,0% untuk grade 1 DIBLOKIR, bukan diperingatkan"`.
 7. **Test yang menyentuh audit tidak boleh mencoba membersihkan dirinya** dengan `DELETE` —
    trigger append-only akan menolaknya. Pakai data baru per test, atau `db:reset`.
-8. **Jangan menambah nilai enum baru** hanya untuk memudahkan test. Daftar enum terkunci di
+8. **Pakai `bantuan.ts`, jangan menyalin fixture ke dalam berkas test.** Salinan inline
+   generator nomor referensi pernah menyebabkan kegagalan `Unique constraint failed on
+   (nomor_referensi)` yang **berpindah-pindah berkas tiap run** — karena ruang nilainya hanya
+   8.999 sedangkan baris uji menumpuk di schema test dan tidak bisa dihapus. Kegagalan
+   fixture yang menyamar sebagai kegagalan aturan adalah waktu debug yang paling terbuang.
+9. **Jangan menambah nilai enum baru** hanya untuk memudahkan test. Daftar enum terkunci di
    `AGENTS.md` bagian 4.1, `SRS` 3.2, dan `SDD` BAB 4.1 sekaligus.
-9. Commit test dengan scope FR-nya: `test(FR-07): tambah kasus AC-09 margin di bawah batas grade 1`.
+10. Commit test dengan scope FR-nya: `test(FR-07): tambah kasus AC-09 margin di bawah batas grade 1`.
 
 ---
 
@@ -982,3 +999,4 @@ Dugaan lokasi : <berkas:baris kalau sudah diketahui>
 | Tanggal | Oleh | Perubahan |
 |---|---|---|
 | 2026-08-21 | Tim iMitra | Versi awal — dibaca dari route terdaftar, seed, fixtures, dan berkas test yang ada |
+| 2026-08-21 | Tim iMitra | Angka test diambil dari keluaran runner (bukan hitungan blok `it`); inventaris diperbarui ke 32 berkas / 280 test; G-1…G-5 dan G-7 ditutup, G-11 ditambahkan; catatan `DATABASE_URL_TEST` dan `bantuan.ts` |
