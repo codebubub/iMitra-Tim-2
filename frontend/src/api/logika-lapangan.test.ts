@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   anggotaLengkap,
   anggotaUntukPayload,
+  bolehKirimPengajuan,
   bolehKirimSurvei,
   bolehUnggahDokumen,
   dokumenTerbaruPerKunci,
@@ -201,6 +202,51 @@ describe('S-03 BuatPengajuan — anggotaLengkap (validasi bentuk sebelum kirim)'
 
   it('plafon 0 -> tidak lengkap', () => {
     expect(anggotaLengkap({ ...lengkap, plafonDiajukan: 0 })).toBe(false)
+  })
+})
+
+describe('S-03 BuatPengajuan — bolehKirimPengajuan (FR-10 / AC-14 komposisi)', () => {
+  const lengkap: AnggotaBaru = {
+    nama: 'Slamet Riyadi',
+    nik: '3404010101010001',
+    alamat: 'Jl. Melati 1',
+    jenisUsaha: 'Warung kelontong',
+    plafonDiajukan: 50_000_000,
+  }
+  const anggotaKe = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      ...lengkap,
+      nik: String(3404010101010001 + i).padStart(16, '0'),
+    }))
+
+  it('PERORANGAN dengan satu anggota lengkap boleh dikirim', () => {
+    expect(bolehKirimPengajuan('PERORANGAN', [lengkap])).toBe(true)
+  })
+
+  it('PERORANGAN dengan anggota belum lengkap TIDAK boleh dikirim', () => {
+    expect(bolehKirimPengajuan('PERORANGAN', [{ ...lengkap, alamat: '' }])).toBe(false)
+  })
+
+  it('KELOMPOK dengan 2 anggota TIDAK boleh dikirim (minimal 3, FR-10)', () => {
+    expect(bolehKirimPengajuan('KELOMPOK', anggotaKe(2))).toBe(false)
+  })
+
+  it('KELOMPOK dengan 3 anggota lengkap boleh dikirim (batas bawah)', () => {
+    expect(bolehKirimPengajuan('KELOMPOK', anggotaKe(3))).toBe(true)
+  })
+
+  it('KELOMPOK dengan 4 anggota lengkap boleh dikirim (AC-14: 240jt)', () => {
+    expect(bolehKirimPengajuan('KELOMPOK', anggotaKe(4))).toBe(true)
+  })
+
+  it('KELOMPOK dengan 11 anggota TIDAK boleh dikirim (maksimal 10)', () => {
+    expect(bolehKirimPengajuan('KELOMPOK', anggotaKe(11))).toBe(false)
+  })
+
+  it('KELOMPOK 3 anggota tetapi satu tak lengkap TIDAK boleh dikirim', () => {
+    const daftar = anggotaKe(3)
+    daftar[1] = { ...daftar[1], jenisUsaha: '' }
+    expect(bolehKirimPengajuan('KELOMPOK', daftar)).toBe(false)
   })
 })
 
