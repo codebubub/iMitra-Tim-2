@@ -1,8 +1,8 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import jwt from 'jsonwebtoken';
-import { ImitraError } from '#lib/error.js';
-import { loadEnv } from '#config/env.js';
-import type { Peran } from '#domain/approval.js';
+import { ImitraError } from '../lib/error.js';
+import { loadEnv } from '../config/env.js';
+import type { Peran } from '../domain/approval.js';
 
 export async function authMiddleware(req: FastifyRequest, _reply: FastifyReply) {
   const header = req.headers.authorization;

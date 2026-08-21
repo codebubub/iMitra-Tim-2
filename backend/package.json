@@ -22,16 +22,6 @@
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
-  "_catatan_imports": "Peta subpath di bawah dipakai modul yang ditulis Alfian (#lib/, #config/, #clients/). Impor relatif tetap yang utama; peta ini ada supaya berkasnya jalan tanpa ditulis ulang.",
-  "imports": {
-    "#lib/*": "./src/lib/*",
-    "#config/*": "./src/config/*",
-    "#clients/*": "./src/clients/*",
-    "#domain/*": "./src/domain/*",
-    "#services/*": "./src/services/*",
-    "#repositories/*": "./src/repositories/*",
-    "#middleware/*": "./src/middleware/*"
-  },
   "dependencies": {
     "@fastify/cors": "9.0.1",
     "@prisma/client": "5.14.0",

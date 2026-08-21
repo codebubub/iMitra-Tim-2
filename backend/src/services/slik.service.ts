@@ -1,6 +1,6 @@
-import { SlikResult, SlikClient } from '#clients/slik.client.js'
-import { loadEnv } from '#config/env.js'
-import { prisma } from '#lib/prisma.js'
+import { SlikResult, SlikClient } from '../clients/slik.client.js'
+import { loadEnv } from '../config/env.js'
+import { prisma } from '../lib/prisma.js'
 
 /**
  * Orkestrasi SLIK check (FR-05). Ditulis Alfian; disesuaikan saat rekonsiliasi

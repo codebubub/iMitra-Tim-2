@@ -235,8 +235,21 @@ export function Skoring() {
    * ketidaksesuaian nyata yang harus terlihat — bukan ditutupi dengan memakai
    * angka server di kedua sisi.
    */
-  const totalBobot = rincianTerurut.reduce((s, r) => s + r.bobot, 0)
-  const totalKontribusi = rincianTerurut.reduce((s, r) => s + r.kontribusi, 0)
+  /**
+   * `Number(...)` di sini bukan hiasan.
+   *
+   * Kolom NUMERIC di PostgreSQL dipetakan Prisma menjadi Decimal, dan JSON
+   * mengubahnya menjadi STRING. Tanpa konversi, `s + r.bobot` menggabungkan
+   * teks: "35" + "25" menjadi "3525", dan baris Total menampilkan angka yang
+   * tidak masuk akal walaupun skor akhirnya benar.
+   *
+   * Backend sekarang sudah mengirim number lewat DTO, tetapi konversi ini
+   * dipertahankan sebagai pertahanan berlapis: tipe respons API tidak
+   * divalidasi saat runtime, jadi perubahan di server tidak akan tertangkap
+   * compiler di sini.
+   */
+  const totalBobot = rincianTerurut.reduce((s, r) => s + Number(r.bobot), 0)
+  const totalKontribusi = rincianTerurut.reduce((s, r) => s + Number(r.kontribusi), 0)
   const skorSebelumPembulatan = totalBobot === 0 ? 0 : totalKontribusi / totalBobot
 
   return (
@@ -346,11 +359,11 @@ export function Skoring() {
                   {rincianTerurut.map((r) => (
                     <tr key={r.kodeKomponen}>
                       <td>{LABEL_KOMPONEN[r.kodeKomponen]}</td>
-                      <td className="angka">{angkaBiasa(r.bobot)}</td>
-                      <td className="angka">{tigaDesimal(r.nilaiMentah)}</td>
+                      <td className="angka">{angkaBiasa(Number(r.bobot))}</td>
+                      <td className="angka">{tigaDesimal(Number(r.nilaiMentah))}</td>
                       {/* 3 desimal, tidak dibulatkan (BR-07, AC-07) */}
-                      <td className="angka">{tigaDesimal(r.skorKomponen)}</td>
-                      <td className="angka">{tigaDesimal(r.kontribusi)}</td>
+                      <td className="angka">{tigaDesimal(Number(r.skorKomponen))}</td>
+                      <td className="angka">{tigaDesimal(Number(r.kontribusi))}</td>
                     </tr>
                   ))}
                   <tr style={gaya.barisTotal}>
