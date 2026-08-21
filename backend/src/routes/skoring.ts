@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { hitungDanSimpanSkoring } from '../services/skoring.service.js'
+import { overrideGradeSkoring } from '../services/override-skoring.service.js'
 
 const skemaOverride = z.object({
   gradeFinal: z.number().int().min(1).max(5),
@@ -76,9 +77,9 @@ export async function skoringRoutes(app: FastifyInstance): Promise<void> {
     '/api/pengajuan/:id/skoring/override',
     { config: { peran: ['ANL'] } },
     async (req) => {
+      const { id } = req.params as { id: string }
       const { gradeFinal, alasan } = skemaOverride.parse(req.body)
-      // TODO: implement override logic
-      return { gradeFinal, alasan }
+      return overrideGradeSkoring(req.pengguna!, id, gradeFinal, alasan)
     },
   )
 }

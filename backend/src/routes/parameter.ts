@@ -1,6 +1,11 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { bacaBobotKomponen, bacaParameterSkalar, bacaRentangMargin, bacaAmbangApproval } from '../services/parameter.service.js'
+import {
+  ubahBobotKomponen,
+  ubahAmbangApproval,
+  ubahRentangMargin,
+} from '../services/parameter-tulis.service.js'
 
 const skemaUpdateBobot = z.array(
   z.object({ kode: z.string(), bobot: z.number() }),
@@ -34,8 +39,7 @@ export async function parameterRoutes(app: FastifyInstance): Promise<void> {
     { config: { peran: ['ADM'] } },
     async (req) => {
       const data = skemaUpdateBobot.parse(req.body)
-      // TODO: implement update logic
-      return data
+      return ubahBobotKomponen(req.pengguna!, data)
     },
   )
 
@@ -58,8 +62,7 @@ export async function parameterRoutes(app: FastifyInstance): Promise<void> {
           urutanPeran: z.array(z.string()),
         }),
       ).parse(req.body)
-      // TODO: implement update logic
-      return data
+      return ubahAmbangApproval(req.pengguna!, data)
     },
   )
 
@@ -76,8 +79,7 @@ export async function parameterRoutes(app: FastifyInstance): Promise<void> {
     { config: { peran: ['ADM'] } },
     async (req) => {
       const data = skemaUpdateRentang.parse(req.body)
-      // TODO: implement update logic
-      return data
+      return ubahRentangMargin(req.pengguna!, data)
     },
   )
 }

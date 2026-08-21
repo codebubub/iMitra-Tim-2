@@ -1,7 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
 import { api, rupiah } from '../api/client'
-import { useAuth } from '../auth/AuthContext'
 import { BadgeStatus } from '../components/Badge'
 
 type BarisPengajuan = {
@@ -23,7 +21,6 @@ type BarisPengajuan = {
  * pembatasannya bisa ditembus dengan membuka DevTools.
  */
 export function Dashboard() {
-  const { pengguna, keluar } = useAuth()
   const { data, isLoading, error } = useQuery({
     queryKey: ['pengajuan'],
     queryFn: () => api<BarisPengajuan[]>('/api/pengajuan'),
@@ -35,23 +32,7 @@ export function Dashboard() {
   }, {})
 
   return (
-    <div className="layout">
-      <nav className="sidebar">
-        <div style={{ fontWeight: 700, color: 'var(--warna-primer)', padding: 8 }}>iMitra</div>
-        <Link to="/dashboard" className="aktif">
-          Dashboard
-        </Link>
-        <div style={{ flex: 1 }} />
-        <div style={{ padding: 8, borderTop: '1px solid var(--warna-garis)' }}>
-          <div style={{ fontWeight: 600 }}>{pengguna?.nama}</div>
-          <span className="badge badge--info">{pengguna?.peran}</span>
-          <button className="tombol tombol--sekunder" style={{ marginTop: 8, width: '100%' }} onClick={keluar}>
-            Keluar
-          </button>
-        </div>
-      </nav>
-
-      <main className="konten">
+    <>
         <h1>Dashboard Pipeline</h1>
 
         {isLoading && <p className="redup">Memuat pengajuan...</p>}
@@ -109,7 +90,6 @@ export function Dashboard() {
             </div>
           </>
         )}
-      </main>
-    </div>
+    </>
   )
 }
